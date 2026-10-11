@@ -20,12 +20,17 @@ def obsidian_registry_path(
     env: Mapping[str, str] | None = None,
     home: Path | None = None,
 ) -> Path:
+    """Where Obsidian keeps its vault registry on this machine.
+
+    Both inputs are injectable so tests never touch the real environment.
+    """
     env = os.environ if env is None else env
     home = Path.home() if home is None else home
     if sys.platform == "darwin":
         return home / "Library" / "Application Support" / "obsidian" / "obsidian.json"
     if sys.platform == "win32":
-        return Path(env.get("APPDATA") or home / "AppData" / "Roaming") / "obsidian" / "obsidian.json"
+        base = Path(env.get("APPDATA") or home / "AppData" / "Roaming")
+        return base / "obsidian" / "obsidian.json"
     return Path(env.get("XDG_CONFIG_HOME") or home / ".config") / "obsidian" / "obsidian.json"
 
 

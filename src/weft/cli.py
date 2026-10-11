@@ -39,6 +39,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run the CLI. Returns the process exit code."""
     args = _build_parser().parse_args(argv)
     try:
         if args.command == "serve":
@@ -50,7 +51,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _serve(cli_vault: str | None) -> int:
-    from weft.server import build_server  # deferred: keep `weft config` fast
+    # Deferred on purpose: importing the server pulls in `mcp`, and `weft config`
+    # should stay fast. Telling pylint this is intentional, not an accident.
+    from weft.server import build_server  # pylint: disable=import-outside-toplevel
 
     resolved = resolve_vault(cli_vault, os.environ, user_config_path())
     print(f"weft: serving vault {resolved.path} (from {resolved.source})", file=sys.stderr)

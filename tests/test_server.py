@@ -1,5 +1,9 @@
 """The MCP layer, exercised through a real MCP client (in memory, no subprocess)."""
 
+# pylint: disable=redefined-outer-name
+# Test parameters deliberately reuse the fixture's name: that is how pytest
+# injects fixtures. Pylint reads it as shadowing; it isn't.
+
 import pytest
 from mcp import Client
 
@@ -8,19 +12,22 @@ from weft.vault import Vault
 
 
 @pytest.fixture
-def client(vault_dir):
+def mcp_client(vault_dir):
+    """An in-memory MCP client bound to a temp vault."""
     return Client(build_server(Vault(vault_dir)))
 
 
-async def test_lists_vault_info_tool(client):
-    async with client:
-        tools = await client.list_tools()
+async def test_lists_vault_info_tool(mcp_client):
+    """The server exposes exactly the weft_vault_info tool."""
+    async with mcp_client:
+        tools = await mcp_client.list_tools()
     assert [t.name for t in tools.tools] == ["weft_vault_info"]
 
 
-async def test_vault_info_reports_the_injected_vault(client, vault_dir):
-    async with client:
-        result = await client.call_tool("weft_vault_info", {})
+async def test_vault_info_reports_the_injected_vault(mcp_client, vault_dir):
+    """weft_vault_info reports the vault the server was built with."""
+    async with mcp_client:
+        result = await mcp_client.call_tool("weft_vault_info", {})
     assert result.structured_content == {
         "root": str(vault_dir.resolve()),
         "is_obsidian_vault": True,

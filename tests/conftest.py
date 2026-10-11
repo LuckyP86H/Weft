@@ -1,3 +1,5 @@
+"""Shared fixtures for the Weft test suite."""
+
 import pytest
 
 

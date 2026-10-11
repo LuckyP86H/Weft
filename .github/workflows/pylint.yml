@@ -17,7 +17,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint
+        # The project itself plus the test deps: without them pylint reports
+        # every third-party import as E0401 (import-error).
+        # (pytest/pytest-asyncio live in uv's dev dependency-group, which pip
+        # can't see, so they are named explicitly.)
+        pip install -e .
+        pip install pylint pytest pytest-asyncio
     - name: Analyzing the code with pylint
       run: |
         pylint $(git ls-files '*.py')
