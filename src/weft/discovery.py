@@ -16,9 +16,12 @@ from collections.abc import Mapping
 from pathlib import Path
 
 
-def obsidian_registry_path(env: Mapping[str, str] | None = None) -> Path:
+def obsidian_registry_path(
+    env: Mapping[str, str] | None = None,
+    home: Path | None = None,
+) -> Path:
     env = os.environ if env is None else env
-    home = Path.home()
+    home = Path.home() if home is None else home
     if sys.platform == "darwin":
         return home / "Library" / "Application Support" / "obsidian" / "obsidian.json"
     if sys.platform == "win32":

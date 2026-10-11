@@ -31,6 +31,8 @@ async def test_serve_with_vault_flag(vault_dir):
 
 
 async def test_serve_with_env_var(vault_dir, tmp_path):
+    # NOTE: env replaces (not extends) the subprocess environment;
+    # sys.executable must stay absolute or the child won't start.
     env = {"WEFT_VAULT": str(vault_dir), "WEFT_CONFIG": str(tmp_path / "none.json")}
     assert await _vault_root(_params(env=env)) == str(vault_dir.resolve())
 

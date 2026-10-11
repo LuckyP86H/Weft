@@ -69,6 +69,10 @@ Two layers. v0.1 ships layer 2; layer 1 is parked (see §8).
 | Configured terms | User's `redact_terms` list in `weft.config.json`: company name, project codenames, team names, internal URLs | `[REDACTED:term]` |
 
 Markers are visible on purpose — you should *see* what was removed.
+
+The redaction report carries **counts by category only** (`{term: 2}`), never the
+matched text. Writing the matched text into frontmatter or logs would make the report
+itself the leak.
 Every scrub returns a report: `{ redactions: [{category, count}], scrubbed_text }`.
 Deliberately out of scope for v0.1: ML-based PII/NER detection (fuzzy → belongs
 in a later layer, or in the agent's judgment).

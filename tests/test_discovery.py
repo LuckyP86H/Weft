@@ -1,6 +1,6 @@
 import json
 
-from weft.discovery import detect_vaults
+from weft.discovery import detect_vaults, obsidian_registry_path
 
 
 def test_lists_existing_vaults_only(tmp_path):
@@ -22,3 +22,10 @@ def test_missing_or_odd_registry_gives_empty_list(tmp_path):
     assert detect_vaults(bad) == []
     bad.write_text("not json")
     assert detect_vaults(bad) == []
+
+
+def test_registry_path_uses_injected_home(tmp_path):
+    fake_home = tmp_path / "home"
+    got = obsidian_registry_path(env={}, home=fake_home)
+    assert str(got).startswith(str(fake_home))
+    assert got.name == "obsidian.json"
