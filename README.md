@@ -28,10 +28,10 @@ If none is set it refuses to start and tells you how to fix it. On a new laptop,
 ### Use it from Claude Code
 
 ```sh
-claude mcp add --transport stdio --scope user weft -- uv run --directory /path/to/Weft weft serve
+claude mcp add --transport stdio --scope user weft -- /path/to/Weft/.venv/bin/weft serve
 ```
 
-Add `-e WEFT_VAULT=/path/to/vault` to pin the vault in the client config instead of the saved setting.
+Use the venv binary, not `uv run`: Claude Desktop may not have `uv` on its PATH, and the binary needs no install step at launch. Options such as `-e` must come **before** the server name; anything after `--` is passed to `weft serve`. The vault comes from `weft config set-vault`, so you don't need `-e`. To pin a vault in the client config instead, use `claude mcp add --transport stdio --scope user -e WEFT_VAULT=/path/to/vault weft -- /path/to/Weft/.venv/bin/weft serve`.
 
 ## Develop
 

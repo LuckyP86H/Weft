@@ -265,9 +265,8 @@ not a Resource or a Prompt. (Rule of thumb: tools *do* things, resources
    `uv`, args: `run --directory /absolute/path/to/weft weft serve`), call `weft_scrub` with
    `{"text": "my key is sk-abc123XYZ and my email is me@acme.com"}`.
    Watch the redaction report — that's your hygiene layer working.
-2. **Claude Code:** run `claude mcp add --transport stdio --scope user weft -- uv run --directory /absolute/path/to/weft weft serve`
-   (add `-e WEFT_VAULT=/path/to/vault` to pin the vault in the client config,
-   or run `weft config set-vault` once and omit it),
+2. **Claude Code:** run `claude mcp add --transport stdio --scope user weft -- /absolute/path/to/weft/.venv/bin/weft serve`
+   (options like `-e` go before the server name; the vault comes from `weft config set-vault`),
    then say: *"capture this thought: just realized deterministic tools beat
    clever prompts for filing"*. Open `<vault>/inbox/` — your note is there,
    frontmatter and all.
