@@ -1,0 +1,30 @@
+[project]
+name = "weft"
+version = "0.1.0"
+description = "Privacy-first personal MCP server for an Obsidian vault"
+readme = "README.md"
+authors = [
+    { name = "Paul", email = "46582797+LuckyP86H@users.noreply.github.com" }
+]
+license = { file = "LICENSE" }
+requires-python = ">=3.14"
+dependencies = [
+    "mcp>=2.3.0",
+]
+
+[project.scripts]
+weft = "weft.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

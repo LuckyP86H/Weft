@@ -1,0 +1,17 @@
+"""MCP tool adapters.
+
+Each module exposes ``register(mcp, vault)``. A tool here is a thin shell: it
+declares the schema the agent sees and delegates to plain Python elsewhere.
+Domain logic never lives in this package, and never imports ``mcp`` outside it.
+"""
+
+from __future__ import annotations
+
+from mcp.server.mcpserver import MCPServer
+
+from weft.tools import vault_info
+from weft.vault import Vault
+
+
+def register_all(mcp: MCPServer, vault: Vault) -> None:
+    vault_info.register(mcp, vault)
