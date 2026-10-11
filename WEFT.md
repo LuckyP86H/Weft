@@ -156,7 +156,7 @@ redactions:
 
 ## 7. Tech stack
 
-Python 3.12, `mcp` (official Python SDK, v2.x — `MCPServer` + `@mcp.tool()`
+Python 3.14, `mcp` (official Python SDK, v2.x — `MCPServer` + `@mcp.tool()`
 decorator), `uv` for project/environment management, `pytest` for tests.
 stdio transport.
 

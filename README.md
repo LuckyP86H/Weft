@@ -6,6 +6,8 @@ The full spec and roadmap live in [WEFT.md](WEFT.md). This repo is currently the
 
 ## Setup
 
+Requires Python 3.14 and [uv](https://docs.astral.sh/uv/) 0.13+ (`brew upgrade uv`). `uv sync` fetches everything else.
+
 ```sh
 uv sync
 uv run weft config detect                  # vaults Obsidian knows about on this machine
