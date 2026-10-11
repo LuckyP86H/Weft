@@ -19,6 +19,7 @@ from weft.config import (
     user_config_path,
 )
 from weft.discovery import detect_vaults, obsidian_registry_path
+from weft.server import build_server
 from weft.vault import Vault
 
 
@@ -51,10 +52,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _serve(cli_vault: str | None) -> int:
-    # Deferred on purpose: importing the server pulls in `mcp`, and `weft config`
-    # should stay fast. Telling pylint this is intentional, not an accident.
-    from weft.server import build_server  # pylint: disable=import-outside-toplevel
-
     resolved = resolve_vault(cli_vault, os.environ, user_config_path())
     print(f"weft: serving vault {resolved.path} (from {resolved.source})", file=sys.stderr)
     build_server(Vault(resolved.path)).run("stdio")

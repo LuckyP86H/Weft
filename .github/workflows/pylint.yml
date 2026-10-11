@@ -1,4 +1,4 @@
-name: Pylint
+name: CI
 
 on: [push]
 
@@ -23,6 +23,9 @@ jobs:
         # can't see, so they are named explicitly.)
         pip install -e .
         pip install pylint pytest pytest-asyncio
+    - name: Run tests
+      run: |
+        pytest
     - name: Analyzing the code with pylint
       run: |
         pylint $(git ls-files '*.py')
