@@ -17,11 +17,11 @@ def mcp_client(vault_dir):
     return Client(build_server(Vault(vault_dir)))
 
 
-async def test_lists_vault_info_tool(mcp_client):
-    """The server exposes exactly the weft_vault_info tool."""
+async def test_lists_registered_tools(mcp_client):
+    """The server exposes exactly the v0.1 tools registered so far."""
     async with mcp_client:
         tools = await mcp_client.list_tools()
-    assert [t.name for t in tools.tools] == ["weft_vault_info"]
+    assert sorted(t.name for t in tools.tools) == ["weft_search", "weft_vault_info"]
 
 
 async def test_vault_info_reports_the_injected_vault(mcp_client, vault_dir):
@@ -33,3 +33,27 @@ async def test_vault_info_reports_the_injected_vault(mcp_client, vault_dir):
         "is_obsidian_vault": True,
         "note_count": 3,
     }
+
+
+async def test_search_tool_returns_ranked_hits(mcp_client, vault_dir):
+    """weft_search returns vault-relative paths, snippets and scores over MCP."""
+    (vault_dir / "notes" / "crdt.md").write_text("CRDTs merge.\nCRDT again.\n")
+    async with mcp_client:
+        result = await mcp_client.call_tool("weft_search", {"query": "crdt"})
+    assert result.is_error is False
+    assert result.structured_content == {
+        "result": [
+            {"path": "notes/crdt.md", "snippet": "CRDTs merge.\nCRDT again.", "score": 2}
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    "args",
+    [{"query": ""}, {"query": "a", "limit": 0}, {"query": "a", "limit": 51}, {}],
+)
+async def test_search_tool_rejects_invalid_input(mcp_client, args):
+    """Schema constraints reject bad input before the search function runs."""
+    async with mcp_client:
+        result = await mcp_client.call_tool("weft_search", args)
+    assert result.is_error is True
