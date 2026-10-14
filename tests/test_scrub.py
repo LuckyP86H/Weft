@@ -13,6 +13,8 @@ def categories(result):
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
+        ("-----BEGIN PRIVATE KEY-----\nabc no end", "[REDACTED:credential]"),
+        ("password:\nhunter2 tail", "[REDACTED:credential] tail"),
         ("my key is sk-abc123XYZ today", "my key is [REDACTED:credential] today"),
         ("token ghp_abcdefghijklmnopqrstuvwxyz0123", "token [REDACTED:credential]"),
         ("slack xoxb-1234567890-abcdef", "slack [REDACTED:credential]"),
@@ -60,6 +62,8 @@ def test_phone_numbers_are_redacted(text):
         "version 3.14.2 shipped",
         "port 8080 and 443",
         "I had 3 notes",
+        "order 1234567890123 shipped",
+        "build 20261014123456",
     ],
 )
 def test_ordinary_numbers_are_left_alone(text):

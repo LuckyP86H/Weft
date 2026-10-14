@@ -15,13 +15,28 @@ from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+
+def _looks_like_phone(match: re.Match[str]) -> bool:
+    """Reject bare digit runs that are not phone-shaped (order numbers, ISBNs).
+
+    A match with separators or a leading ``+`` is accepted. A bare run of
+    digits must be exactly 10 digits, or 11 starting with 1.
+    """
+    text = match.group()
+    if re.search(r"[\s.()+-]", text):
+        return True
+    return len(text) == 10 or (len(text) == 11 and text.startswith("1"))
+
+
 # Order matters: credentials run first so a token is never half-eaten by a
 # later pattern (an email-looking fragment inside a key, for example).
+# \s after password/api key is deliberate: the value may sit on the next line,
+# and over-redacting one word is cheaper than leaking a secret.
 _RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "credential",
         re.compile(
-            r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"
+            r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|\Z)"
             r"|\bsk-[A-Za-z0-9_-]{8,}"
             r"|\bgh[pousr]_[A-Za-z0-9]{20,}"
             r"|\bxox[baprs]-[A-Za-z0-9-]{10,}"
@@ -71,9 +86,18 @@ def scrub(text: str, terms: Iterable[str] = ()) -> ScrubResult:
     result = text
 
     for category, pattern in _RULES:
-        result, n = pattern.subn(f"[REDACTED:{category}]", result)
-        if n:
-            counts[category] += n
+        matched = 0
+
+        def replace(match: re.Match[str], category: str = category) -> str:
+            nonlocal matched
+            if category == "phone" and not _looks_like_phone(match):
+                return match.group()
+            matched += 1
+            return f"[REDACTED:{category}]"
+
+        result = pattern.sub(replace, result)
+        if matched:
+            counts[category] += matched
 
     literal_terms = sorted({t for t in terms if t}, key=len, reverse=True)
     if literal_terms:
