@@ -6,7 +6,6 @@ vault location is picked up from each configuration channel.
 
 import sys
 
-import pytest
 from mcp import Client, StdioServerParameters
 
 from weft.cli import main
@@ -27,10 +26,12 @@ async def _vault_root(params):
 
 
 async def test_serve_with_vault_flag(vault_dir):
+    """The --vault flag reaches the server over real stdio."""
     assert await _vault_root(_params("--vault", str(vault_dir))) == str(vault_dir.resolve())
 
 
 async def test_serve_with_env_var(vault_dir, tmp_path):
+    """The WEFT_VAULT env var reaches the server over real stdio."""
     # NOTE: env replaces (not extends) the subprocess environment;
     # sys.executable must stay absolute or the child won't start.
     env = {"WEFT_VAULT": str(vault_dir), "WEFT_CONFIG": str(tmp_path / "none.json")}
@@ -38,6 +39,7 @@ async def test_serve_with_env_var(vault_dir, tmp_path):
 
 
 def test_config_set_vault_then_show(vault_dir, tmp_path, monkeypatch, capsys):
+    """set-vault persists the path, and show reads it back."""
     monkeypatch.setenv("WEFT_CONFIG", str(tmp_path / "cfg.json"))
     monkeypatch.delenv("WEFT_VAULT", raising=False)
 
@@ -48,6 +50,7 @@ def test_config_set_vault_then_show(vault_dir, tmp_path, monkeypatch, capsys):
 
 
 def test_serve_without_config_fails_fast_with_help(tmp_path, monkeypatch, capsys):
+    """No vault configured: fail fast with a helpful message."""
     monkeypatch.setenv("WEFT_CONFIG", str(tmp_path / "none.json"))
     monkeypatch.delenv("WEFT_VAULT", raising=False)
 

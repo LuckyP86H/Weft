@@ -25,12 +25,16 @@ class PathEscapeError(VaultError):
 
 @dataclass(frozen=True)
 class VaultInfo:
+    """A snapshot of the vault: where it is and what it holds."""
+
     root: str
     is_obsidian_vault: bool
     note_count: int
 
 
 class Vault:
+    """A directory treated as the boundary: nothing escapes it."""
+
     def __init__(self, root: Path) -> None:
         root = root.expanduser().resolve()
         if not root.is_dir():
@@ -58,9 +62,11 @@ class Vault:
 
     @property
     def is_obsidian_vault(self) -> bool:
+        """True when the directory looks like an Obsidian vault."""
         return (self.root / ".obsidian").is_dir()
 
     def info(self) -> VaultInfo:
+        """Summarize the vault: path, Obsidian check, and note count."""
         return VaultInfo(
             root=str(self.root),
             is_obsidian_vault=self.is_obsidian_vault,

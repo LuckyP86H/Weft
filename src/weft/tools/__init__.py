@@ -14,4 +14,5 @@ from weft.vault import Vault
 
 
 def register_all(mcp: MCPServer, vault: Vault) -> None:
+    """Register every Weft tool on ``mcp``."""
     vault_info.register(mcp, vault)

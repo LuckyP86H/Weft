@@ -16,6 +16,7 @@ from weft.vault import Vault
 
 
 def register(mcp: MCPServer, vault: Vault) -> None:
+    """Register the ``weft_vault_info`` tool on ``mcp``."""
     @mcp.tool(name="weft_vault_info")
     def weft_vault_info() -> dict[str, Any]:
         """Report the Obsidian vault Weft is connected to.

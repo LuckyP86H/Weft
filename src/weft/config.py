@@ -34,6 +34,8 @@ class ConfigError(Exception):
 
 @dataclass(frozen=True)
 class ResolvedVault:
+    """A vault directory plus a human-readable note of where it came from."""
+
     path: Path
     source: str  # human-readable origin, e.g. "--vault flag"
 

@@ -22,6 +22,7 @@ from weft.vault import Vault
 
 
 def build_server(vault: Vault) -> MCPServer:
+    """Assemble the Weft MCP server, bound to ``vault``."""
     mcp = MCPServer(
         name="weft",
         version=__version__,
