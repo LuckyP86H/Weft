@@ -51,6 +51,28 @@ class Vault:
             raise PathEscapeError(f"Path escapes the vault: {relative}")
         return candidate
 
+    def create_unique(self, directory: str, filename: str, content: str) -> Path:
+        """Create ``filename`` in ``directory`` without ever overwriting a file.
+
+        On a name collision, ``-2``, ``-3``, ... is appended to the stem.
+        Creation uses exclusive mode, so two writers cannot pick the same name.
+        """
+        if Path(filename).name != filename:
+            raise PathEscapeError(f"Filename must not contain a path: {filename}")
+        target_dir = self.resolve(directory)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        stem, suffix = Path(filename).stem, Path(filename).suffix
+        for attempt in range(1, 1000):
+            name = filename if attempt == 1 else f"{stem}-{attempt}{suffix}"
+            path = target_dir / name
+            try:
+                with path.open("x", encoding="utf-8") as handle:
+                    handle.write(content)
+            except FileExistsError:
+                continue
+            return path
+        raise VaultError(f"Could not find a free name for {filename}")
+
     def iter_notes(self) -> Iterator[Path]:
         """Yield every markdown note, skipping Obsidian/tool folders and hidden dirs."""
         for path in sorted(self.root.rglob("*.md")):
