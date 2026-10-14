@@ -24,6 +24,7 @@ async def test_lists_registered_tools(mcp_client):
     assert sorted(t.name for t in tools.tools) == [
         "weft_scrub",
         "weft_search",
+        "weft_suggest_links",
         "weft_vault_info",
     ]
 
@@ -75,4 +76,41 @@ async def test_search_tool_rejects_invalid_input(mcp_client, args):
     """Schema constraints reject bad input before the search function runs."""
     async with mcp_client:
         result = await mcp_client.call_tool("weft_search", args)
+    assert result.is_error is True
+
+
+async def test_suggest_links_tool_ranks_candidates(mcp_client, vault_dir):
+    """weft_suggest_links returns wikilink candidates with shared terms over MCP."""
+    (vault_dir / "notes" / "crdt.md").write_text("CRDTs replicate state without locks.")
+    async with mcp_client:
+        result = await mcp_client.call_tool(
+            "weft_suggest_links", {"text": "Replicate state with CRDTs"}
+        )
+    assert result.is_error is False
+    assert result.structured_content == {
+        "result": [
+            {
+                "candidate": "[[crdt]]",
+                "score": 3,
+                "matched_terms": ["crdts", "replicate", "state"],
+            }
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        {},
+        {"note_path": "top.md", "text": "both given"},
+        {"note_path": "../outside.md"},
+        {"note_path": "missing.md"},
+        {"text": ""},
+        {"text": "a", "limit": 0},
+    ],
+)
+async def test_suggest_links_tool_rejects_invalid_input(mcp_client, args):
+    """Bad input comes back as a tool error, not a crash or an empty answer."""
+    async with mcp_client:
+        result = await mcp_client.call_tool("weft_suggest_links", args)
     assert result.is_error is True

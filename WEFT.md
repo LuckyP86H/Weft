@@ -187,6 +187,7 @@ weft/
     scrub.py              # (milestone 1) hygiene layer, pure functions
     notes.py              # (milestone 2) frontmatter + filename generation
     search.py             # (milestone 3) term-frequency search, pure functions
+    links.py              # (milestone 4) token-overlap link suggestions, pure functions
   tests/                  # one file per layer; test_cli_stdio.py runs the real server
 ```
 
