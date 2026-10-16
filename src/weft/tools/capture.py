@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
 
 from weft.capture import capture
@@ -57,15 +58,20 @@ def register(mcp: MCPServer, vault: Vault) -> None:
         Set ``dry_run`` to preview the filename and redaction report without
         writing anything.
         """
-        result = capture(
-            vault,
-            text,
-            source_type,
-            now=datetime.now().astimezone(),
-            source=source,
-            title_hint=title_hint,
-            dry_run=dry_run,
-        )
+        try:
+            result = capture(
+                vault,
+                text,
+                source_type,
+                now=datetime.now().astimezone(),
+                source=source,
+                title_hint=title_hint,
+                dry_run=dry_run,
+            )
+        except ValueError as exc:
+            # A ToolError carries its message to the agent; any other
+            # exception is reported only as "Error executing tool".
+            raise ToolError(str(exc)) from exc
         structured: dict[str, Any] = {
             "note_path": result.note_path,
             "redactions": [asdict(r) for r in result.redactions],

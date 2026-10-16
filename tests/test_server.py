@@ -137,6 +137,8 @@ async def test_capture_tool_rejects_empty_text(mcp_client, vault_dir):
             "weft_capture", {"text": "   ", "source_type": "thought"}
         )
     assert result.is_error
+    # The agent must be told why, not just "Error executing tool".
+    assert "text must not be empty" in result.content[0].text
     assert sorted(p.name for p in (vault_dir / "inbox").iterdir()) == before
 
 

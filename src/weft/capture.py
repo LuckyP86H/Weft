@@ -140,10 +140,11 @@ def capture(  # pylint: disable=too-many-arguments,too-many-locals
         source=clean_source,
         redactions=redactions,
     )
-    path = vault.create_unique(INBOX_DIR, filename, content) if not dry_run else None
+    if dry_run:
+        path = vault.peek_unique(INBOX_DIR, filename)
+    else:
+        path = vault.create_unique(INBOX_DIR, filename, content)
     return CaptureResult(
-        note_path=path.relative_to(vault.root).as_posix()
-        if path is not None
-        else f"{INBOX_DIR}/{filename}",
+        note_path=path.relative_to(vault.root).as_posix(),
         redactions=redactions,
     )

@@ -142,6 +142,24 @@ def test_dry_run_writes_nothing_but_returns_would_be_path(vault, vault_dir):
     assert [(r.category, r.count) for r in result.redactions] == [("email", 1)]
 
 
+def test_dry_run_previews_the_collision_suffix(vault, vault_dir):
+    """The preview names the file a real capture would create, suffix included."""
+    first = capture(vault, "one", "thought", now=NOW, title_hint="Same")
+    preview = capture(vault, "two", "thought", now=NOW, title_hint="Same", dry_run=True)
+    real = capture(vault, "two", "thought", now=NOW, title_hint="Same")
+    assert first.note_path == "inbox/2026-10-14-0645-same.md"
+    assert preview.note_path == real.note_path == "inbox/2026-10-14-0645-same-2.md"
+    assert "two" in (vault_dir / real.note_path).read_text()
+
+
+def test_dry_run_does_not_create_a_missing_inbox(vault, vault_dir):
+    """Previewing must not create the inbox folder."""
+    (vault_dir / "inbox" / "a.md").unlink()
+    (vault_dir / "inbox").rmdir()
+    capture(vault, "hello", "thought", now=NOW, dry_run=True)
+    assert not (vault_dir / "inbox").exists()
+
+
 @pytest.mark.parametrize("bad", ["../escape.md", "sub/dir.md", "/abs.md"])
 def test_create_unique_refuses_paths_in_filename(vault, bad):
     """A filename that contains a path is refused."""
