@@ -24,12 +24,14 @@ def vault(vault_dir):
         ("Why MCP servers should be deterministic", "why-mcp-servers-should-be"),
         ("  Café  déjà-vu: naïve!! ", "cafe-deja-vu-naive"),
         ("", "note"),
-        ("日本語だけ", "note"),
+        ("日本語だけ", "日本語だけ"),
+        ("今天复盘了季度规划，明天要跟Jeffrey对齐", "今天复盘了季度规划明-jeffrey"),
+        ("今天学了MCP", "今天学了-mcp"),
         ("[REDACTED:email] wrote", "redacted-email-wrote"),
     ],
 )
 def test_slugify(text, expected):
-    """Slugs are lowercase, ASCII-folded, hyphenated, at most five words."""
+    """Slugs are hyphenated: CJK chars kept as-is, then ASCII-folded words."""
     assert slugify(text) == expected
 
 
@@ -118,6 +120,26 @@ def test_unknown_source_type_is_rejected_and_nothing_written(vault, vault_dir):
     with pytest.raises(ValueError, match="source_type"):
         capture(vault, "x", "gossip", now=NOW)  # type: ignore[arg-type]
     assert sorted(p.name for p in (vault_dir / "inbox").iterdir()) == before
+
+
+@pytest.mark.parametrize("bad_text", ["", "   ", "\n\t \n"])
+def test_empty_text_is_rejected_and_nothing_written(vault, vault_dir, bad_text):
+    """Empty or whitespace-only text raises instead of filing a junk note."""
+    before = sorted(p.name for p in (vault_dir / "inbox").iterdir())
+    with pytest.raises(ValueError, match="text must not be empty"):
+        capture(vault, bad_text, "thought", now=NOW)
+    assert sorted(p.name for p in (vault_dir / "inbox").iterdir()) == before
+
+
+def test_dry_run_writes_nothing_but_returns_would_be_path(vault, vault_dir):
+    """dry_run computes the filename and redactions without touching disk."""
+    before = sorted(p.name for p in (vault_dir / "inbox").iterdir())
+    result = capture(
+        vault, "mail me@acme.com", "thought", now=NOW, dry_run=True
+    )
+    assert sorted(p.name for p in (vault_dir / "inbox").iterdir()) == before
+    assert result.note_path == "inbox/2026-10-14-0645-mail-redacted-email.md"
+    assert [(r.category, r.count) for r in result.redactions] == [("email", 1)]
 
 
 @pytest.mark.parametrize("bad", ["../escape.md", "sub/dir.md", "/abs.md"])

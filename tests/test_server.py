@@ -31,6 +31,17 @@ async def test_lists_registered_tools(mcp_client):
     ]
 
 
+async def test_capture_tool_declares_write_annotations(mcp_client):
+    """weft_capture is annotated as a non-destructive write, not read-only."""
+    async with mcp_client:
+        tools = await mcp_client.list_tools()
+    capture_tool = next(t for t in tools.tools if t.name == "weft_capture")
+    assert capture_tool.annotations is not None
+    assert capture_tool.annotations.read_only_hint is False
+    assert capture_tool.annotations.destructive_hint is False
+    assert capture_tool.annotations.idempotent_hint is False
+
+
 async def test_vault_info_reports_the_injected_vault(mcp_client, vault_dir):
     """weft_vault_info reports the vault the server was built with."""
     async with mcp_client:
@@ -81,6 +92,49 @@ async def test_capture_tool_rejects_unknown_source_type(mcp_client, vault_dir):
     async with mcp_client:
         result = await mcp_client.call_tool(
             "weft_capture", {"text": "x", "source_type": "gossip"}
+        )
+    assert result.is_error
+    assert sorted(p.name for p in (vault_dir / "inbox").iterdir()) == before
+
+
+async def test_capture_tool_returns_human_readable_summary(mcp_client):
+    """The text content is a one-line summary, not raw JSON."""
+    async with mcp_client:
+        result = await mcp_client.call_tool(
+            "weft_capture",
+            {"text": "mail me@acme.com", "source_type": "thought"},
+        )
+    assert not result.is_error
+    text = result.content[0].text
+    assert text.startswith("Captured to inbox/")
+    assert "redacted: email x 1" in text
+    # The machine-readable side is still there too.
+    assert result.structured_content["dry_run"] is False
+    assert result.structured_content["redactions"] == [
+        {"category": "email", "count": 1}
+    ]
+
+
+async def test_capture_tool_dry_run_writes_nothing(mcp_client, vault_dir):
+    """dry_run previews the filename without touching the inbox."""
+    before = sorted(p.name for p in (vault_dir / "inbox").iterdir())
+    async with mcp_client:
+        result = await mcp_client.call_tool(
+            "weft_capture",
+            {"text": "mail me@acme.com", "source_type": "thought", "dry_run": True},
+        )
+    assert not result.is_error
+    assert sorted(p.name for p in (vault_dir / "inbox").iterdir()) == before
+    assert result.content[0].text.startswith("[dry run] would capture to inbox/")
+    assert result.structured_content["dry_run"] is True
+
+
+async def test_capture_tool_rejects_empty_text(mcp_client, vault_dir):
+    """Empty text is rejected before any file is written."""
+    before = sorted(p.name for p in (vault_dir / "inbox").iterdir())
+    async with mcp_client:
+        result = await mcp_client.call_tool(
+            "weft_capture", {"text": "   ", "source_type": "thought"}
         )
     assert result.is_error
     assert sorted(p.name for p in (vault_dir / "inbox").iterdir()) == before

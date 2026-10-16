@@ -12,28 +12,50 @@ from datetime import datetime
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
+from mcp.types import CallToolResult, TextContent, ToolAnnotations
 
 from weft.capture import capture
 from weft.types import SourceType
 from weft.vault import Vault
 
 
+def _summarize(note_path: str, redactions: list[dict[str, Any]], dry_run: bool) -> str:
+    """One human-readable line: where the note went and what was redacted."""
+    prefix = "[dry run] would capture to" if dry_run else "Captured to"
+    summary = f"{prefix} {note_path}"
+    if redactions:
+        bits = ", ".join(f"{r['category']} x {r['count']}" for r in redactions)
+        summary += f" (redacted: {bits})"
+    return summary
+
+
 def register(mcp: MCPServer, vault: Vault) -> None:
     """Register the ``weft_capture`` tool on ``mcp``."""
 
-    @mcp.tool(name="weft_capture")
+    @mcp.tool(
+        name="weft_capture",
+        annotations=ToolAnnotations(
+            readOnlyHint=False,  # writes a file into the vault inbox
+            destructiveHint=False,  # never overwrites or deletes
+            idempotentHint=False,  # every call files a new note
+        ),
+    )
     def weft_capture(
         text: str,
         source_type: SourceType,
         source: str | None = None,
         title_hint: str | None = None,
-    ) -> dict[str, Any]:
+        dry_run: bool = False,
+    ) -> CallToolResult:
         """Scrub ``text`` and file it as a new note in the vault's inbox.
 
         Secrets, emails and phone numbers are redacted before anything is
         written, including from the filename, title and source. An existing
         note is never overwritten. Returns the vault-relative note path and a
         counts-only redaction report.
+
+        Set ``dry_run`` to preview the filename and redaction report without
+        writing anything.
         """
         result = capture(
             vault,
@@ -42,8 +64,19 @@ def register(mcp: MCPServer, vault: Vault) -> None:
             now=datetime.now().astimezone(),
             source=source,
             title_hint=title_hint,
+            dry_run=dry_run,
         )
-        return {
+        structured: dict[str, Any] = {
             "note_path": result.note_path,
             "redactions": [asdict(r) for r in result.redactions],
+            "dry_run": dry_run,
         }
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=_summarize(result.note_path, structured["redactions"], dry_run),
+                )
+            ],
+            structured_content=structured,
+        )

@@ -25,7 +25,9 @@ from weft.vault import Vault
 INBOX_DIR = "inbox"
 SOURCE_TYPES: tuple[str, ...] = get_args(SourceType)
 _SLUG_WORDS = 5
+_SLUG_CJK_CHARS = 10
 _TITLE_MAX = 80
+_CJK_RE = re.compile(r"[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff]")
 
 
 @dataclass(frozen=True)
@@ -37,10 +39,19 @@ class CaptureResult:
 
 
 def slugify(text: str, max_words: int = _SLUG_WORDS) -> str:
-    """Lowercase, ASCII-folded, hyphenated slug from the first ``max_words`` words."""
+    """Hyphenated slug: up to ``_SLUG_CJK_CHARS`` CJK chars kept as-is, then
+    up to ``max_words`` ASCII-folded lowercase words.
+
+    Pure-English input behaves exactly as before; CJK input (which has no
+    spaces to split into words) now contributes readable characters instead
+    of collapsing to ``"note"``.
+    """
     folded = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
     words = re.findall(r"[a-z0-9]+", folded.lower())
-    return "-".join(words[:max_words]) or "note"
+    cjk = "".join(_CJK_RE.findall(text))[:_SLUG_CJK_CHARS]
+    parts = [cjk] if cjk else []
+    parts.extend(words[:max_words])
+    return "-".join(parts) or "note"
 
 
 def _title(text: str) -> str:
@@ -85,7 +96,7 @@ def render_note(  # pylint: disable=too-many-arguments
     return "\n".join(lines)
 
 
-def capture(  # pylint: disable=too-many-arguments
+def capture(  # pylint: disable=too-many-arguments,too-many-locals
     vault: Vault,
     text: str,
     source_type: SourceType,
@@ -93,11 +104,16 @@ def capture(  # pylint: disable=too-many-arguments
     now: datetime,
     source: str | None = None,
     title_hint: str | None = None,
+    dry_run: bool = False,
 ) -> CaptureResult:
     """Scrub ``text`` and write it to ``<vault>/inbox/`` as a new note.
 
     Never overwrites: on a filename collision the vault appends ``-2``, ``-3``.
+    With ``dry_run=True`` nothing is written; the returned ``note_path`` is
+    the filename that *would* have been used.
     """
+    if not text.strip():
+        raise ValueError("text must not be empty")
     if source_type not in SOURCE_TYPES:
         raise ValueError(f"source_type must be one of {', '.join(SOURCE_TYPES)}")
 
@@ -124,8 +140,10 @@ def capture(  # pylint: disable=too-many-arguments
         source=clean_source,
         redactions=redactions,
     )
-    path = vault.create_unique(INBOX_DIR, filename, content)
+    path = vault.create_unique(INBOX_DIR, filename, content) if not dry_run else None
     return CaptureResult(
-        note_path=path.relative_to(vault.root).as_posix(),
+        note_path=path.relative_to(vault.root).as_posix()
+        if path is not None
+        else f"{INBOX_DIR}/{filename}",
         redactions=redactions,
     )
