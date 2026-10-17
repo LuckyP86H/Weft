@@ -51,6 +51,44 @@ class Vault:
             raise PathEscapeError(f"Path escapes the vault: {relative}")
         return candidate
 
+    def _candidate_names(self, filename: str) -> Iterator[str]:
+        """Yield ``filename``, then ``-2``, ``-3``, ... variants of its stem."""
+        if Path(filename).name != filename:
+            raise PathEscapeError(f"Filename must not contain a path: {filename}")
+        stem, suffix = Path(filename).stem, Path(filename).suffix
+        yield filename
+        for attempt in range(2, 1000):
+            yield f"{stem}-{attempt}{suffix}"
+
+    def peek_unique(self, directory: str, filename: str) -> Path:
+        """Return the path ``create_unique`` would use now, without creating it.
+
+        A preview only: another writer may take the name before a real write.
+        """
+        target_dir = self.resolve(directory)
+        for name in self._candidate_names(filename):
+            if not (target_dir / name).exists():
+                return target_dir / name
+        raise VaultError(f"Could not find a free name for {filename}")
+
+    def create_unique(self, directory: str, filename: str, content: str) -> Path:
+        """Create ``filename`` in ``directory`` without ever overwriting a file.
+
+        On a name collision, ``-2``, ``-3``, ... is appended to the stem.
+        Creation uses exclusive mode, so two writers cannot pick the same name.
+        """
+        target_dir = self.resolve(directory)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for name in self._candidate_names(filename):
+            path = target_dir / name
+            try:
+                with path.open("x", encoding="utf-8") as handle:
+                    handle.write(content)
+            except FileExistsError:
+                continue
+            return path
+        raise VaultError(f"Could not find a free name for {filename}")
+
     def iter_notes(self) -> Iterator[Path]:
         """Yield every markdown note, skipping Obsidian/tool folders and hidden dirs."""
         for path in sorted(self.root.rglob("*.md")):
