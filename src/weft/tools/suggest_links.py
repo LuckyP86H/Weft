@@ -12,10 +12,11 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from weft.links import DEFAULT_LIMIT, suggest_links
-from weft.vault import Vault
+from weft.vault import Vault, VaultError
 
 MAX_LIMIT = 50
 
@@ -43,7 +44,10 @@ def register(mcp: MCPServer, vault: Vault) -> None:
         ignored) and the shared words. Nothing is written; you decide which
         links to insert.
         """
-        return [
-            asdict(s)
-            for s in suggest_links(vault, note_path=note_path, text=text, limit=limit)
-        ]
+        try:
+            suggestions = suggest_links(vault, note_path=note_path, text=text, limit=limit)
+        except (ValueError, VaultError) as exc:
+            # A ToolError carries its message to the agent so it can fix the
+            # call; any other exception is reported only as "Error executing tool".
+            raise ToolError(str(exc)) from exc
+        return [asdict(s) for s in suggestions]

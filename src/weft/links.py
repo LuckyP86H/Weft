@@ -8,6 +8,11 @@ Scoring is plain token overlap: tokenize both sides (lowercase words of 3+
 characters, minus stopwords and YAML frontmatter), and a candidate's score is
 how many distinct terms it shares with the input. Ties break by title, so the
 same vault always gives the same answer.
+
+Chinese and Japanese have no spaces between words, so a CJK run is split into
+overlapping two-character terms (知识管理 -> 知识, 识管, 管理), the usual
+dictionary-free approach. Scrubber markers like ``[REDACTED:email]`` are
+dropped first: every scrubbed note has them, so they say nothing about topic.
 """
 
 from __future__ import annotations
@@ -20,7 +25,10 @@ from weft.vault import Vault, VaultError
 DEFAULT_LIMIT = 10
 MAX_MATCHED_TERMS = 10
 
-_WORD = re.compile(r"[^\W_]{3,}")
+_CJK = "\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff"
+_WORD = re.compile(rf"[^\W_{_CJK}]{{3,}}")
+_CJK_RUN = re.compile(rf"[{_CJK}]+")
+_REDACTION_MARKER = re.compile(r"\[REDACTED:\w+\]")
 _FRONTMATTER = re.compile(r"\A---\n.*?\n---[ \t]*(?:\n|\Z)", re.DOTALL)
 
 # Common English words that would make every note look related to every other.
@@ -37,6 +45,11 @@ STOPWORDS = frozenset(
     why will with won would wouldn you your yours yourself yourselves
     """.split()
 )
+
+
+# Particles and pronouns that glue Chinese sentences together; a bigram that
+# contains one (的核, 我们) is grammar, not topic.
+CJK_STOPCHARS = frozenset("的了是在和与及之也就都而我你他她它们这那个一不有")
 
 
 class NoteNotFoundError(VaultError):
@@ -57,10 +70,20 @@ def strip_frontmatter(text: str) -> str:
     return _FRONTMATTER.sub("", text, count=1)
 
 
+def _cjk_bigrams(run: str) -> set[str]:
+    """Overlapping two-character terms of a CJK run, minus grammar bigrams."""
+    pairs = (run[i : i + 2] for i in range(len(run) - 1))
+    return {p for p in pairs if not CJK_STOPCHARS.intersection(p)}
+
+
 def tokenize(text: str) -> set[str]:
-    """Distinct lowercase words of 3+ letters/digits, stopwords removed."""
-    words = _WORD.findall(strip_frontmatter(text).casefold())
-    return {w for w in words if w not in STOPWORDS}
+    """Distinct terms: lowercase words of 3+ letters/digits (stopwords removed)
+    plus CJK bigrams. Frontmatter and scrubber markers are ignored."""
+    body = _REDACTION_MARKER.sub(" ", strip_frontmatter(text)).casefold()
+    terms = {w for w in _WORD.findall(body) if w not in STOPWORDS}
+    for run in _CJK_RUN.findall(body):
+        terms |= _cjk_bigrams(run)
+    return terms
 
 
 def suggest_links(

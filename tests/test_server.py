@@ -187,6 +187,23 @@ async def test_suggest_links_tool_ranks_candidates(mcp_client, vault_dir):
 
 
 @pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        ({}, "exactly one of note_path or text"),
+        ({"note_path": "top.md", "text": "both given"}, "exactly one of note_path or text"),
+        ({"note_path": "../outside.md"}, "escapes the vault"),
+        ({"note_path": "missing.md"}, "No markdown note at: missing.md"),
+    ],
+)
+async def test_suggest_links_tool_explains_bad_input(mcp_client, args, message):
+    """The agent sees why a call failed, so it can fix it, not a bare error."""
+    async with mcp_client:
+        result = await mcp_client.call_tool("weft_suggest_links", args)
+    assert result.is_error is True
+    assert message in result.content[0].text
+
+
+@pytest.mark.parametrize(
     "args",
     [
         {},

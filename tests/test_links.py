@@ -38,10 +38,16 @@ def links_vault(vault_dir):
         ("snake_case words", {"snake", "case", "words"}),
         ("Café naïve", {"café", "naïve"}),
         ("v2 mcp2026 2026", {"mcp2026", "2026"}),
+        ("key [REDACTED:credential] sent", {"key", "sent"}),
+        ("知识管理", {"知识", "识管", "管理"}),
+        ("我们的笔记", {"笔记"}),
+        ("MCP服务器", {"mcp", "服务", "务器"}),
+        ("书", set()),
     ],
 )
 def test_tokenize(text, expected):
-    """Lowercase, 3+ characters, stopwords dropped, underscores split."""
+    """Lowercase, 3+ characters, stopwords dropped, underscores split, CJK as
+    bigrams minus grammar characters, scrubber markers ignored."""
     assert tokenize(text) == expected
 
 
@@ -63,6 +69,20 @@ def test_frontmatter_keys_do_not_count_as_shared_terms(links_vault):
     """'title' and 'scrubbed' appear in frontmatter only, so they never match."""
     hits = suggest_links(links_vault, text="title scrubbed")
     assert not hits
+
+
+def test_redaction_markers_alone_do_not_link_notes(links_vault, vault_dir):
+    """Two scrubbed notes are not related just because both had an email removed."""
+    (vault_dir / "notes" / "lunch.md").write_text("Lunch with [REDACTED:email]")
+    assert not suggest_links(links_vault, text="Ping [REDACTED:email] tomorrow")
+
+
+def test_chinese_notes_link_by_shared_bigrams(links_vault, vault_dir):
+    """Chinese has no spaces; shared two-character terms still connect notes."""
+    (vault_dir / "notes" / "zettel.md").write_text("知识管理的核心是笔记之间的链接")
+    [hit] = suggest_links(links_vault, text="今天讨论了知识管理和笔记系统")
+    assert hit.candidate == "[[zettel]]"
+    assert hit.matched_terms == ["知识", "笔记", "管理", "识管"]
 
 
 def test_ranks_by_shared_terms_then_title(links_vault):
