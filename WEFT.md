@@ -107,7 +107,8 @@ in a later layer, or in the agent's judgment).
 ### `weft_suggest_links`
 - **In:** `{ note_path: string }` or `{ text: string }`
 - **Out:** `[{ candidate: "[[Note Title]]", score, matched_terms: [...] }]`
-- **Behavior:** tokenize input (stopword-filtered, CJK as two-character terms),
+- **Behavior:** scrub both sides, then tokenize (stopword-filtered, CJK as
+  two-character terms), so `matched_terms` never carries a piece of a secret;
   score existing notes by overlap, each shared term weighted by how rare it is
   in the vault (BM25 IDF), so boilerplate every note shares counts for almost
   nothing. Notes the input already links to are skipped. Deterministic

@@ -17,8 +17,12 @@ included) are skipped: suggesting them again tells the agent nothing.
 
 Chinese and Japanese have no spaces between words, so a CJK run is split into
 overlapping two-character terms (知识管理 -> 知识, 识管, 管理), the usual
-dictionary-free approach. Scrubber markers like ``[REDACTED:email]`` are
-dropped first: every scrubbed note has them, so they say nothing about topic.
+dictionary-free approach.
+
+Both sides are scrubbed before tokenizing, because ``matched_terms`` goes back
+to the agent: without it, two notes that mention ``bob@acme.com`` would return
+``bob``, ``acme`` and ``com``. The resulting markers like ``[REDACTED:email]``
+are then dropped: every scrubbed note has them, so they say nothing about topic.
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from weft.scrub import scrub
 from weft.vault import Vault, VaultError
 
 DEFAULT_LIMIT = 10
@@ -89,8 +94,10 @@ def _cjk_bigrams(run: str) -> set[str]:
 
 def tokenize(text: str) -> set[str]:
     """Distinct terms: lowercase words of 3+ letters/digits (stopwords removed)
-    plus CJK bigrams. Frontmatter and scrubber markers are ignored."""
-    body = _REDACTION_MARKER.sub(" ", strip_frontmatter(text)).casefold()
+    plus CJK bigrams. Sensitive spans are scrubbed first, so no term can be a
+    piece of a secret; frontmatter and scrubber markers are ignored."""
+    body = scrub(strip_frontmatter(text)).scrubbed_text
+    body = _REDACTION_MARKER.sub(" ", body).casefold()
     terms = {w for w in _WORD.findall(body) if w not in STOPWORDS}
     for run in _CJK_RUN.findall(body):
         terms |= _cjk_bigrams(run)

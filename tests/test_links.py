@@ -41,6 +41,7 @@ def links_vault(vault_dir):
         ("Café naïve", {"café", "naïve"}),
         ("v2 mcp2026 2026", {"mcp2026", "2026"}),
         ("key [REDACTED:credential] sent", {"key", "sent"}),
+        ("mail bob@acme.com today", {"mail", "today"}),
         ("知识管理", {"知识", "识管", "管理"}),
         ("我们的笔记", {"笔记"}),
         ("MCP服务器", {"mcp", "服务", "务器"}),
@@ -77,6 +78,16 @@ def test_redaction_markers_alone_do_not_link_notes(links_vault, vault_dir):
     """Two scrubbed notes are not related just because both had an email removed."""
     (vault_dir / "notes" / "lunch.md").write_text("Lunch with [REDACTED:email]")
     assert not suggest_links(links_vault, text="Ping [REDACTED:email] tomorrow")
+
+
+def test_matched_terms_never_leak_pieces_of_a_secret(links_vault, vault_dir):
+    """A note that still holds raw PII (written outside Weft) must not hand its
+    pieces back to the agent: the email links nothing, only real words do."""
+    (vault_dir / "notes" / "falcon.md").write_text("Falcon kickoff, email bob@acme.com")
+    [hit] = suggest_links(links_vault, text="email bob@acme.com re Falcon")
+    assert hit.candidate == "[[falcon]]"
+    assert set(hit.matched_terms) == {"falcon", "email"}
+    assert not suggest_links(links_vault, text="bob@acme.com")
 
 
 def test_chinese_notes_link_by_shared_bigrams(links_vault, vault_dir):
