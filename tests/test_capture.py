@@ -28,6 +28,8 @@ def vault(vault_dir):
         ("今天复盘了季度规划，明天要跟Jeffrey对齐", "今天复盘了季度规划明-jeffrey"),
         ("今天学了MCP", "今天学了-mcp"),
         ("[REDACTED:email] wrote", "redacted-email-wrote"),
+        ("判断交给agent。Ping me", "判断交给-agent-ping-me"),
+        ("ﬁle naïve", "file-naive"),
     ],
 )
 def test_slugify(text, expected):
@@ -195,6 +197,7 @@ def test_vault_fields_are_written_in_frontmatter(vault, vault_dir):
         "thought",
         now=NOW,
         meta=NoteMeta(
+            note_type="reflection",
             summary="  Tools should be deterministic.\nignored second line",
             domain="Backend Engineering",
             hub="[[Thought Stream]]",
@@ -207,6 +210,7 @@ def test_vault_fields_are_written_in_frontmatter(vault, vault_dir):
         'title: "Deterministic tools beat clever prompts."\n'
         "created: 2026-10-14T06:45:30+00:00\n"
         "source_type: thought\n"
+        'type: "reflection"\n'
         'domain: "Backend Engineering"\n'
         'hub: "[[Thought Stream]]"\n'
         'summary: "Tools should be deterministic."\n'

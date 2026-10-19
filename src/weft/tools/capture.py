@@ -48,6 +48,9 @@ def register(mcp: MCPServer, vault: Vault, inbox_dir: str = INBOX_DIR) -> None:
         source_type: SourceType,
         source: str | None = None,
         title_hint: str | None = None,
+        note_type: Annotated[
+            str | None, Field(description="The vault's note type, written as `type`.")
+        ] = None,
         summary: Annotated[
             str | None, Field(description="One-sentence summary for the frontmatter.")
         ] = None,
@@ -70,9 +73,11 @@ def register(mcp: MCPServer, vault: Vault, inbox_dir: str = INBOX_DIR) -> None:
         counts-only redaction report.
 
         If the vault documents its conventions (for example an AGENTS.md at
-        its root), fill ``summary``, ``domain``, ``hub`` and ``tags`` to match
-        them, so the note fits in with the rest of the vault. ``hub`` must be
-        an existing note. All four are optional and scrubbed too.
+        its root), fill ``note_type``, ``summary``, ``domain``, ``hub`` and
+        ``tags`` to match
+        them, so the note fits in with the rest of the vault. ``note_type``
+        is written as ``type``. ``hub`` must be an existing note. All of them
+        are optional and scrubbed too.
 
         Set ``dry_run`` to preview the filename and redaction report without
         writing anything.
@@ -86,7 +91,13 @@ def register(mcp: MCPServer, vault: Vault, inbox_dir: str = INBOX_DIR) -> None:
                 inbox_dir=inbox_dir,
                 source=source,
                 title_hint=title_hint,
-                meta=NoteMeta(summary=summary, domain=domain, hub=hub, tags=tuple(tags or ())),
+                meta=NoteMeta(
+                    note_type=note_type,
+                    summary=summary,
+                    domain=domain,
+                    hub=hub,
+                    tags=tuple(tags or ()),
+                ),
                 dry_run=dry_run,
             )
         except ValueError as exc:

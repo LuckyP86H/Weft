@@ -4,7 +4,8 @@ Plain Python with no ``mcp`` import. The clock is passed in, so tests can pin
 the filename and ``created`` timestamp.
 
 Everything that ends up on disk is scrubbed, not just the body: the filename
-slug, the title, the source and the vault fields (summary, domain, hub, tags)
+slug, the title, the source and the vault fields (type, domain, hub, summary,
+tags)
 are derived from scrubbed text too. A slug built from raw text would leak
 exactly what the body hides.
 
@@ -54,6 +55,7 @@ class NoteMeta:
     contain spaces, as in Obsidian.
     """
 
+    note_type: str | None = None
     summary: str | None = None
     domain: str | None = None
     hub: str | None = None
@@ -68,7 +70,12 @@ def slugify(text: str, max_words: int = _SLUG_WORDS) -> str:
     spaces to split into words) now contributes readable characters instead
     of collapsing to ``"note"``.
     """
-    folded = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    # Accents are dropped (é -> e); any other non-ASCII character becomes a
+    # space, so "agent。Ping" splits into two words instead of "agentping".
+    folded = "".join(
+        "" if unicodedata.combining(ch) else ch if ch.isascii() else " "
+        for ch in unicodedata.normalize("NFKD", text)
+    )
     words = re.findall(r"[a-z0-9]+", folded.lower())
     cjk = "".join(_CJK_RE.findall(text))[:_SLUG_CJK_CHARS]
     parts = [cjk] if cjk else []
@@ -135,8 +142,13 @@ def render_note(  # pylint: disable=too-many-arguments
     ]
     if source:
         lines.append(f"source: {_yaml_str(source)}")
-    for key in ("domain", "hub", "summary"):
-        if value := getattr(meta, key):
+    for key, value in (
+        ("type", meta.note_type),
+        ("domain", meta.domain),
+        ("hub", meta.hub),
+        ("summary", meta.summary),
+    ):
+        if value:
             lines.append(f"{key}: {_yaml_str(value)}")
     if meta.tags:
         lines.append("tags:")
@@ -191,6 +203,7 @@ def capture(  # pylint: disable=too-many-arguments,too-many-locals
     clean_source = clean(source) if source else None
     meta = meta or NoteMeta()
     clean_meta = NoteMeta(
+        note_type=_one_line(clean(meta.note_type)) if meta.note_type else None,
         summary=_one_line(clean(meta.summary), _SUMMARY_MAX) if meta.summary else None,
         domain=_one_line(clean(meta.domain)) if meta.domain else None,
         hub=_hub_link(vault, clean(meta.hub)) if meta.hub else None,

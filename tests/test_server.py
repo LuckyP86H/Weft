@@ -94,6 +94,7 @@ async def test_capture_tool_writes_vault_fields(mcp_client, vault_dir):
             {
                 "text": "a thought",
                 "source_type": "thought",
+                "note_type": "reflection",
                 "summary": "One line.",
                 "domain": "Thought Stream",
                 "hub": "top",
@@ -102,6 +103,7 @@ async def test_capture_tool_writes_vault_fields(mcp_client, vault_dir):
         )
     assert not result.is_error
     written = (vault_dir / result.structured_content["note_path"]).read_text(encoding="utf-8")
+    assert 'type: "reflection"' in written
     assert 'hub: "[[top]]"' in written
     assert 'summary: "One line."' in written
     assert '  - "inbox/thoughts"' in written

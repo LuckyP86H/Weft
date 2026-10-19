@@ -87,7 +87,8 @@ in a later layer, or in the agent's judgment).
 
 ### `weft_capture`
 - **In:** `{ text: string, source_type: enum, source?: string, title_hint?: string,
-  summary?: string, domain?: string, hub?: string, tags?: string[], dry_run?: bool }`
+  note_type?: string, summary?: string, domain?: string, hub?: string,
+  tags?: string[], dry_run?: bool }`
 - `source_type`: `article | news | video | thought | book | seminar | work | conversation | other`
 - **Out:** `{ note_path, redaction_report }`
 - **Behavior:**
@@ -157,7 +158,8 @@ redactions:
 <scrubbed body text>
 ```
 
-- `domain`, `hub` and `summary` are written only when the agent supplies them,
+- `type` (from `note_type`), `domain`, `hub` and `summary` are written only
+  when the agent supplies them,
   in between `source` and `tags`. They exist so a captured note matches the
   vault's own conventions (an AGENTS.md, say) and the user's other tools accept
   it as is. `hub` must be an existing note and is written as `"[[Hub]]"`.
