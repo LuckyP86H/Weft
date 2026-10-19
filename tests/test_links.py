@@ -9,6 +9,8 @@ import pytest
 from weft.links import (
     MAX_MATCHED_TERMS,
     NoteNotFoundError,
+    idf,
+    linked_notes,
     strip_frontmatter,
     suggest_links,
     tokenize,
@@ -86,19 +88,63 @@ def test_chinese_notes_link_by_shared_bigrams(links_vault, vault_dir):
 
 
 def test_ranks_by_shared_terms_then_title(links_vault):
-    """More distinct shared terms rank higher; ties break by candidate."""
+    """Equal shared terms give equal scores; ties break by candidate."""
     hits = suggest_links(links_vault, text="peers replicate state")
+    three_of_seven = round(3 * idf(3, 7), 3)
     assert [(h.candidate, h.score) for h in hits] == [
-        ("[[crdt]]", 3),
-        ("[[draft]]", 3),
-        ("[[sync]]", 3),
+        ("[[crdt]]", three_of_seven),
+        ("[[draft]]", three_of_seven),
+        ("[[sync]]", three_of_seven),
     ]
 
 
 def test_score_counts_distinct_terms_not_repeats(links_vault):
     """Saying a word five times doesn't make a note five times as related."""
     [hit] = suggest_links(links_vault, text="deterministic deterministic deterministic")
-    assert (hit.candidate, hit.score, hit.matched_terms) == ("[[mcp]]", 1, ["deterministic"])
+    assert (hit.candidate, hit.score, hit.matched_terms) == (
+        "[[mcp]]",
+        round(idf(1, 7), 3),
+        ["deterministic"],
+    )
+
+
+@pytest.mark.parametrize(("doc_freq", "n_docs"), [(1, 2), (2, 2), (1, 30), (30, 30)])
+def test_idf_is_positive_and_falls_as_terms_get_common(doc_freq, n_docs):
+    """Rarer terms are worth more, and nothing is ever worth zero or less."""
+    assert 0 < idf(doc_freq, n_docs)
+    if doc_freq > 1:
+        assert idf(doc_freq, n_docs) < idf(doc_freq - 1, n_docs)
+
+
+def test_boilerplate_every_note_shares_does_not_outrank_a_real_topic(tmp_path):
+    """A navigation bar on every note must not beat one shared rare word."""
+    nav = "Navigation: Dashboard Backend Engineering Hub Faith Formation Hub\n"
+    for i in range(6):
+        (tmp_path / f"filler{i}.md").write_text(nav + f"unrelated topic{i}")
+    (tmp_path / "celery.md").write_text(nav + "Celery retries with exponential backoff.")
+    hits = suggest_links(Vault(tmp_path), text=nav + "How does backoff work?")
+    assert hits[0].candidate == "[[celery]]"
+    assert hits[0].matched_terms[0] == "backoff"
+    assert hits[0].score > 3 * hits[1].score
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("see [[crdt]] and [[notes/sync|Sync]]", {"crdt", "sync"}),
+        ('---\nhub: "[[mcp]]"\n---\nbody [[Draft#Heading]]', {"mcp", "Draft"}),
+        ("no links here", set()),
+    ],
+)
+def test_linked_notes(text, expected):
+    """Link targets by file name: alias, heading and folder parts dropped."""
+    assert linked_notes(text) == expected
+
+
+def test_already_linked_notes_are_skipped(links_vault):
+    """A note the input already links to is not suggested again."""
+    hits = suggest_links(links_vault, text="[[crdt]] peers replicate state")
+    assert [h.candidate for h in hits] == ["[[draft]]", "[[sync]]"]
 
 
 def test_note_path_excludes_the_note_itself(links_vault):
@@ -110,11 +156,11 @@ def test_note_path_excludes_the_note_itself(links_vault):
 
 
 def test_matched_terms_are_sorted_and_capped(links_vault, vault_dir):
-    """Matched terms are listed alphabetically, at most MAX_MATCHED_TERMS."""
+    """Equally rare matched terms are listed alphabetically, at most MAX_MATCHED_TERMS."""
     words = [f"term{i:02d}" for i in range(MAX_MATCHED_TERMS + 5)]
     (vault_dir / "notes" / "many.md").write_text(" ".join(words))
     [hit] = suggest_links(links_vault, text=" ".join(reversed(words)))
-    assert hit.score == len(words)
+    assert hit.score == round(len(words) * idf(1, 8), 3)
     assert hit.matched_terms == words[:MAX_MATCHED_TERMS]
 
 

@@ -9,6 +9,7 @@ import re
 import pytest
 from mcp import Client
 
+from weft.links import idf
 from weft.server import build_server
 from weft.vault import Vault
 
@@ -179,7 +180,7 @@ async def test_suggest_links_tool_ranks_candidates(mcp_client, vault_dir):
         "result": [
             {
                 "candidate": "[[crdt]]",
-                "score": 3,
+                "score": round(3 * idf(1, 4), 3),
                 "matched_terms": ["crdts", "replicate", "state"],
             }
         ]

@@ -40,9 +40,10 @@ def register(mcp: MCPServer, vault: Vault) -> None:
         """Rank existing notes as [[wikilink]] candidates for a note or draft text.
 
         Give exactly one of note_path or text. Each candidate comes with a
-        score (how many distinct words it shares with the input, common words
-        ignored) and the shared words. Nothing is written; you decide which
-        links to insert.
+        score (its shared words, each weighted by how rare it is in the vault,
+        so boilerplate every note has counts for almost nothing) and the shared
+        words, most telling first. Notes the input already links to are left
+        out. Nothing is written; you decide which links to insert.
         """
         try:
             suggestions = suggest_links(vault, note_path=note_path, text=text, limit=limit)

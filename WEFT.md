@@ -107,8 +107,11 @@ in a later layer, or in the agent's judgment).
 ### `weft_suggest_links`
 - **In:** `{ note_path: string }` or `{ text: string }`
 - **Out:** `[{ candidate: "[[Note Title]]", score, matched_terms: [...] }]`
-- **Behavior:** tokenize input (stopword-filtered), score existing notes by
-  overlap. Deterministic ranking; the *agent* decides which links to insert.
+- **Behavior:** tokenize input (stopword-filtered, CJK as two-character terms),
+  score existing notes by overlap, each shared term weighted by how rare it is
+  in the vault (BM25 IDF), so boilerplate every note shares counts for almost
+  nothing. Notes the input already links to are skipped. Deterministic
+  ranking; the *agent* decides which links to insert.
 - **Why not auto-link:** linking is a judgment call → belongs in the agent.
 
 ## 5. Vault layout and configuration

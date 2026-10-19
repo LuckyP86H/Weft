@@ -4,10 +4,16 @@ Pure Python over ``Vault``. The server ranks; it never inserts a link.
 Choosing which candidates are real connections is a judgment call, so it
 stays with the agent (and you).
 
-Scoring is plain token overlap: tokenize both sides (lowercase words of 3+
-characters, minus stopwords and YAML frontmatter), and a candidate's score is
-how many distinct terms it shares with the input. Ties break by title, so the
-same vault always gives the same answer.
+Scoring is weighted token overlap: tokenize both sides (lowercase words of
+3+ characters, minus stopwords and YAML frontmatter), and a candidate's score
+is the sum of the shared terms' rarity across the vault (BM25's inverse
+document frequency, the same idea Elasticsearch ranks with). A word every note
+shares, like a navigation bar or a footer heading, adds almost nothing; a word
+only two notes share adds a lot. Ties break by title, so the same vault always
+gives the same answer.
+
+Notes the input already links to (``[[Note]]`` anywhere, frontmatter
+included) are skipped: suggesting them again tells the agent nothing.
 
 Chinese and Japanese have no spaces between words, so a CJK run is split into
 overlapping two-character terms (知识管理 -> 知识, 识管, 管理), the usual
@@ -17,8 +23,10 @@ dropped first: every scrubbed note has them, so they say nothing about topic.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from weft.vault import Vault, VaultError
 
@@ -29,6 +37,9 @@ _CJK = "\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff"
 _WORD = re.compile(rf"[^\W_{_CJK}]{{3,}}")
 _CJK_RUN = re.compile(rf"[{_CJK}]+")
 _REDACTION_MARKER = re.compile(r"\[REDACTED:\w+\]")
+# [[Note]], [[folder/Note|alias]], [[Note#heading]]: the target is the part
+# before |, # or ^, and Obsidian matches it by file name.
+_WIKILINK = re.compile(r"\[\[([^\]|#^]+)")
 _FRONTMATTER = re.compile(r"\A---\n.*?\n---[ \t]*(?:\n|\Z)", re.DOTALL)
 
 # Common English words that would make every note look related to every other.
@@ -61,7 +72,7 @@ class LinkSuggestion:
     """One candidate note to link to, with why it was suggested."""
 
     candidate: str
-    score: int
+    score: float
     matched_terms: list[str] = field(default_factory=list)
 
 
@@ -86,6 +97,20 @@ def tokenize(text: str) -> set[str]:
     return terms
 
 
+def linked_notes(text: str) -> set[str]:
+    """File names (without ``.md``) that ``text`` already links to."""
+    return {Path(target.strip()).stem for target in _WIKILINK.findall(text)}
+
+
+def idf(doc_freq: int, n_docs: int) -> float:
+    """BM25 inverse document frequency: how much one shared term is worth.
+
+    Near zero for a term in every note, high for a rare one. The ``+ 1``
+    keeps it positive, so even a two-note vault can rank.
+    """
+    return math.log((n_docs - doc_freq + 0.5) / (doc_freq + 0.5) + 1)
+
+
 def suggest_links(
     vault: Vault,
     *,
@@ -93,7 +118,7 @@ def suggest_links(
     text: str | None = None,
     limit: int = DEFAULT_LIMIT,
 ) -> list[LinkSuggestion]:
-    """Rank existing notes by how many terms they share with the input.
+    """Rank existing notes by the rarity-weighted terms they share with the input.
 
     Give exactly one of ``note_path`` (vault-relative; that note is excluded
     from its own suggestions) or ``text``. Candidates are ``[[stem]]``
@@ -107,21 +132,31 @@ def suggest_links(
         if source.suffix != ".md" or not source.is_file():
             raise NoteNotFoundError(f"No markdown note at: {note_path}")
         text = source.read_text(encoding="utf-8", errors="replace")
-    terms = tokenize(text or "")
+    text = text or ""
+    terms = tokenize(text)
     if not terms or limit < 1:
         return []
 
+    # Read every note once: document frequencies need the whole vault.
+    notes = {
+        path: tokenize(path.read_text(encoding="utf-8", errors="replace"))
+        for path in vault.iter_notes()
+    }
+    doc_freq = {t: sum(t in note_terms for note_terms in notes.values()) for t in terms}
+    weight = {t: idf(doc_freq[t], len(notes)) for t in terms}
+    already_linked = linked_notes(text)
+
     suggestions = []
-    for path in vault.iter_notes():
-        if path == source:
+    for path, note_terms in notes.items():
+        if path == source or path.stem in already_linked:
             continue
-        shared = terms & tokenize(path.read_text(encoding="utf-8", errors="replace"))
-        if shared:
+        if shared := terms & note_terms:
+            ranked = sorted(shared, key=lambda t: (-weight[t], t))
             suggestions.append(
                 LinkSuggestion(
                     candidate=f"[[{path.stem}]]",
-                    score=len(shared),
-                    matched_terms=sorted(shared)[:MAX_MATCHED_TERMS],
+                    score=round(sum(weight[t] for t in shared), 3),
+                    matched_terms=ranked[:MAX_MATCHED_TERMS],
                 )
             )
     suggestions.sort(key=lambda s: (-s.score, s.candidate))
