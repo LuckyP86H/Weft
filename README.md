@@ -34,10 +34,44 @@ claude mcp add --transport stdio --scope user weft -- /path/to/Weft/.venv/bin/we
 
 Use the venv binary, not `uv run`: Claude Desktop may not have `uv` on its PATH, and the binary needs no install step at launch. Options such as `-e` must come **before** the server name; anything after `--` is passed to `weft serve`. The vault comes from `weft config set-vault`, so you don't need `-e`. To pin a vault in the client config instead, use `claude mcp add --transport stdio --scope user -e WEFT_VAULT=/path/to/vault weft -- /path/to/Weft/.venv/bin/weft serve`.
 
+### Use it with a vault that has an AGENTS.md
+
+If your vault keeps its rules for AI agents in an `AGENTS.md` at its root (frontmatter fields, folders, hubs), Weft hands that file to Claude as the `weft://conventions` resource and tells it to follow the file when capturing. Claude picks the values that need judgment; Weft scrubs and files the note. The result looks like a note your other tools made, so a plugin such as obsidian-guanjia accepts it without rewriting it.
+
+```mermaid
+flowchart LR
+    you([You]) -->|"capture this thought ..."| claude["Claude<br/>(judgment)"]
+    claude -->|"reads weft://conventions<br/>(your AGENTS.md)"| weft
+    claude -->|"weft_capture(text, note_type, domain,<br/>hub, summary, tags)"| weft["Weft MCP server<br/>(scrub + file, no network)"]
+    weft -->|"new note in your inbox folder"| vault[("Obsidian vault")]
+    guanjia["obsidian-guanjia<br/>(templates, Bases, hubs)"] -->|"hygiene finds nothing to fix"| vault
+```
+
+A capture then comes out like this (the email was scrubbed before anything touched the disk):
+
+```markdown
+---
+title: "今天学了MCP：server 只做确定性的事，判断交给 agent。Ping me at [REDACTED:email]"
+created: 2026-10-19T05:38:42+00:00
+source_type: thought
+type: "reflection"
+domain: "Thought Stream"
+hub: "[[Thought Stream]]"
+summary: "MCP server 只做确定性操作，判断留给 agent。"
+tags:
+  - "inbox/thoughts"
+scrubbed: true
+redactions:
+  - { category: "email", count: 1 }
+---
+```
+
+`hub` must be an existing note, and a call with an unknown hub fails before anything is written. Vaults without an `AGENTS.md` get none of this and work as before.
+
 ## Develop
 
 ```sh
 uv run pytest
 ```
 
-Layers, one-way dependencies (`cli → server → tools → vault`): `config`/`discovery` answer *where*, `vault` is the safe filesystem boundary, `tools/` are thin MCP adapters, `server.py` is the composition root. Only `server.py` and `tools/` import `mcp`.
+Layers, one-way dependencies (`cli → server → tools → vault`): `config`/`discovery` answer *where*, `vault` is the safe filesystem boundary, `tools/` are thin MCP adapters (the tools plus the conventions resource), `server.py` is the composition root. Only `server.py` and `tools/` import `mcp`.
