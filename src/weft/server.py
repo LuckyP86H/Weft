@@ -17,12 +17,13 @@ from __future__ import annotations
 from mcp.server.mcpserver import MCPServer
 
 from weft import __version__
+from weft.capture import INBOX_DIR
 from weft.tools import register_all
 from weft.vault import Vault
 
 
-def build_server(vault: Vault) -> MCPServer:
-    """Assemble the Weft MCP server, bound to ``vault``."""
+def build_server(vault: Vault, *, inbox_dir: str = INBOX_DIR) -> MCPServer:
+    """Assemble the Weft MCP server, bound to ``vault``, capturing into ``inbox_dir``."""
     mcp = MCPServer(
         name="weft",
         version=__version__,
@@ -31,5 +32,5 @@ def build_server(vault: Vault) -> MCPServer:
             "It runs deterministic operations only; judgment stays with you."
         ),
     )
-    register_all(mcp, vault)
+    register_all(mcp, vault, inbox_dir=inbox_dir)
     return mcp

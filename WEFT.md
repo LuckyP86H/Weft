@@ -93,7 +93,8 @@ in a later layer, or in the agent's judgment).
   1. Run `weft_scrub` on `text`.
   2. Generate filename: `YYYY-MM-DD-HHmm-<slug>.md` (slug = first ~5 words,
      lowercase, hyphenated, ASCII-folded).
-  3. Write to `<vault>/inbox/` with frontmatter (see §6).
+  3. Write to the inbox folder with frontmatter (see §6). `inbox/` by default;
+     `weft config set-inbox "<folder>"` points it at the vault's own inbox.
   4. Never overwrites: on collision, append `-2`, `-3`.
 - **Note:** the agent supplies `source_type` and `title_hint` from its
   understanding of your message — the server just files deterministically.
@@ -132,10 +133,11 @@ No hit → the server refuses to start and says how to fix it. It never guesses.
 `weft config detect` lists vaults from Obsidian's own registry, which is how
 you re-point Weft after moving to a new machine.
 
-Per-vault settings (`redact_terms`, `inbox_dir`) arrive with the scrubber
-milestone. Open question to settle then: `redact_terms` names your sensitive
-terms, so storing it *inside* a vault you sync or publish would leak the very
-list the scrubber hides. Prefer the user config file.
+`inbox_dir` lives in the same user config file (`weft config set-inbox`). It is
+vault-relative, must stay inside the vault, and defaults to `inbox`.
+`redact_terms` is still to come: it names your sensitive terms, so storing it
+*inside* a vault you sync or publish would leak the very list the scrubber
+hides. It goes in the user config file too.
 
 ## 6. Note format
 

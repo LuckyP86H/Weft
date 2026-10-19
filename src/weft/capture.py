@@ -102,11 +102,12 @@ def capture(  # pylint: disable=too-many-arguments,too-many-locals
     source_type: SourceType,
     *,
     now: datetime,
+    inbox_dir: str = INBOX_DIR,
     source: str | None = None,
     title_hint: str | None = None,
     dry_run: bool = False,
 ) -> CaptureResult:
-    """Scrub ``text`` and write it to ``<vault>/inbox/`` as a new note.
+    """Scrub ``text`` and write it to ``<vault>/<inbox_dir>/`` as a new note.
 
     Never overwrites: on a filename collision the vault appends ``-2``, ``-3``.
     With ``dry_run=True`` nothing is written; the returned ``note_path`` is
@@ -141,9 +142,9 @@ def capture(  # pylint: disable=too-many-arguments,too-many-locals
         redactions=redactions,
     )
     if dry_run:
-        path = vault.peek_unique(INBOX_DIR, filename)
+        path = vault.peek_unique(inbox_dir, filename)
     else:
-        path = vault.create_unique(INBOX_DIR, filename, content)
+        path = vault.create_unique(inbox_dir, filename, content)
     return CaptureResult(
         note_path=path.relative_to(vault.root).as_posix(),
         redactions=redactions,

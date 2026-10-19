@@ -15,7 +15,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
 
-from weft.capture import capture
+from weft.capture import INBOX_DIR, capture
 from weft.types import SourceType
 from weft.vault import Vault
 
@@ -30,8 +30,8 @@ def _summarize(note_path: str, redactions: list[dict[str, Any]], dry_run: bool) 
     return summary
 
 
-def register(mcp: MCPServer, vault: Vault) -> None:
-    """Register the ``weft_capture`` tool on ``mcp``."""
+def register(mcp: MCPServer, vault: Vault, inbox_dir: str = INBOX_DIR) -> None:
+    """Register the ``weft_capture`` tool on ``mcp``, filing into ``inbox_dir``."""
 
     @mcp.tool(
         name="weft_capture",
@@ -64,6 +64,7 @@ def register(mcp: MCPServer, vault: Vault) -> None:
                 text,
                 source_type,
                 now=datetime.now().astimezone(),
+                inbox_dir=inbox_dir,
                 source=source,
                 title_hint=title_hint,
                 dry_run=dry_run,
