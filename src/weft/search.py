@@ -7,6 +7,10 @@ cache to go stale.
 Ranking is deliberately simple and deterministic: a note's score is how many
 times the query terms appear in it (case-insensitive), ties broken by path.
 Deciding which hits matter is the agent's job.
+
+Snippets are scrubbed before they leave the server. The vault may hold notes
+that were never captured through Weft (a credentials cheatsheet, say), and a
+snippet is text handed straight to the agent and on to its model provider.
 """
 
 from __future__ import annotations
@@ -14,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from weft.scrub import scrub
 from weft.vault import Vault
 
 DEFAULT_LIMIT = 10
@@ -44,8 +49,9 @@ def snippet_for(text: str, terms: list[str]) -> str:
     """Return ~2 lines around the earliest match of any term.
 
     The line holding the first match plus the line after it, whitespace
-    trimmed and capped at ``SNIPPET_MAX_CHARS`` so one huge line can't flood
-    the agent's context.
+    trimmed, scrubbed, and capped at ``SNIPPET_MAX_CHARS`` so one huge line
+    can't flood the agent's context. Scrubbing runs before the cap, so a
+    secret cut in half by the cap is still caught.
     """
     lowered = text.lower()
     positions = [i for i in (lowered.find(t) for t in terms) if i >= 0]
@@ -54,7 +60,7 @@ def snippet_for(text: str, terms: list[str]) -> str:
     lines = text.splitlines()
     line_no = text.count("\n", 0, min(positions))
     window = [line.strip() for line in lines[line_no : line_no + 2]]
-    snippet = "\n".join(line for line in window if line)
+    snippet = scrub("\n".join(line for line in window if line)).scrubbed_text
     if len(snippet) > SNIPPET_MAX_CHARS:
         snippet = snippet[: SNIPPET_MAX_CHARS - 1].rstrip() + "…"
     return snippet
