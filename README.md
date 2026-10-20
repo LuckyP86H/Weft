@@ -2,7 +2,15 @@
 
 Privacy-first MCP server that weaves daily media, spontaneous thoughts, and project workflows into your local Obsidian graph. It extracts abstract technical patterns and metadata while stripping sensitive data like tokens or client names, seamlessly updating your vault with cross-linked, long-term knowledge.
 
-The full spec and roadmap live in [WEFT.md](WEFT.md). This repo is currently the **foundation**: config, vault boundary, server wiring and CLI, with one proof-of-wiring tool (`weft_vault_info`). The scrub/capture/search/link tools build on it.
+The full spec and roadmap live in [WEFT.md](WEFT.md). Tools (milestones 0-4 of WEFT.md):
+
+- `weft_vault_info`: which vault the server is bound to
+- `weft_scrub`: redact secrets, emails and phone numbers, with a counts-only report
+- `weft_capture`: scrub text and file it as a new note in `inbox/` (never overwrites; `dry_run` previews)
+- `weft_search`: full-text search ranked by term frequency
+- `weft_suggest_links`: rank existing notes as `[[wikilink]]` candidates; the agent decides what to link
+
+Not yet: your own `redact_terms` list (milestone 6), so company names and codenames are not redacted today.
 
 ## Setup
 

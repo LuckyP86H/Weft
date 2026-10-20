@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from mcp.server.mcpserver import MCPServer
 
-from weft.tools import capture, scrub, search, vault_info
+from weft.tools import capture, scrub, search, suggest_links, vault_info
 from weft.vault import Vault
 
 
@@ -18,4 +18,5 @@ def register_all(mcp: MCPServer, vault: Vault) -> None:
     vault_info.register(mcp, vault)
     scrub.register(mcp, vault)
     search.register(mcp, vault)
+    suggest_links.register(mcp, vault)
     capture.register(mcp, vault)

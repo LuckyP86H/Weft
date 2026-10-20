@@ -66,7 +66,7 @@ Two layers. v0.1 ships layer 2; layer 1 is parked (see §8).
 | Credentials & secrets | Regex: `sk-…`, `ghp_…`, `xox…`, `AKIA…`, `-----BEGIN … PRIVATE KEY-----`, `password\s*[:=]`, bearer tokens, generic `api[_-]?key\s*[:=]\s*\S+` | `[REDACTED:credential]` |
 | Email addresses | Regex | `[REDACTED:email]` |
 | Phone numbers | Regex (NA + international-ish) | `[REDACTED:phone]` |
-| Configured terms | User's `redact_terms` list in `weft.config.json`: company name, project codenames, team names, internal URLs | `[REDACTED:term]` |
+| Configured terms | User's `redact_terms` list (milestone 6, not built yet): company name, project codenames, team names, internal URLs | `[REDACTED:term]` |
 
 Markers are visible on purpose — you should *see* what was removed.
 
@@ -107,8 +107,12 @@ in a later layer, or in the agent's judgment).
 ### `weft_suggest_links`
 - **In:** `{ note_path: string }` or `{ text: string }`
 - **Out:** `[{ candidate: "[[Note Title]]", score, matched_terms: [...] }]`
-- **Behavior:** tokenize input (stopword-filtered), score existing notes by
-  overlap. Deterministic ranking; the *agent* decides which links to insert.
+- **Behavior:** scrub both sides, then tokenize (stopword-filtered, CJK as
+  two-character terms), so `matched_terms` never carries a piece of a secret;
+  score existing notes by overlap, each shared term weighted by how rare it is
+  in the vault (BM25 IDF), so boilerplate every note shares counts for almost
+  nothing. Notes the input already links to are skipped. Deterministic
+  ranking; the *agent* decides which links to insert.
 - **Why not auto-link:** linking is a judgment call → belongs in the agent.
 
 ## 5. Vault layout and configuration
@@ -185,8 +189,9 @@ weft/
     server.py             # composition root: build_server(vault) -> MCPServer
     cli.py                # `weft serve`, `weft config show|detect|set-vault`
     scrub.py              # (milestone 1) hygiene layer, pure functions
-    notes.py              # (milestone 2) frontmatter + filename generation
+    capture.py            # (milestone 2) frontmatter + filename generation + inbox write
     search.py             # (milestone 3) term-frequency search, pure functions
+    links.py              # (milestone 4) token-overlap link suggestions, pure functions
   tests/                  # one file per layer; test_cli_stdio.py runs the real server
 ```
 
@@ -278,8 +283,8 @@ not a Resource or a Prompt. (Rule of thumb: tools *do* things, resources
 
 **`weft_scrub` — "is this safe to store?"**
 Paste anything work-adjacent into the Inspector first. If the report shows
-`[REDACTED:term]` hits, your `redact_terms` list is doing its job. Tune the
-list in `weft.config.json` until real work notes come back clean.
+`[REDACTED:term]` hits, your `redact_terms` list is doing its job. Once
+`redact_terms` lands (milestone 6), tune it until real work notes come back clean.
 
 **`weft_capture` — the daily driver.**
 In Claude Code or Claude Desktop, just talk:
