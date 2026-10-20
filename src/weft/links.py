@@ -9,8 +9,8 @@ Scoring is weighted token overlap: tokenize both sides (lowercase words of
 is the sum of the shared terms' rarity across the vault (BM25's inverse
 document frequency, the same idea Elasticsearch ranks with). A word every note
 shares, like a navigation bar or a footer heading, adds almost nothing; a word
-only two notes share adds a lot. Ties break by title, so the same vault always
-gives the same answer.
+only two notes share adds a lot. Ties break by candidate (the ``[[stem]]``
+string), so the same vault always gives the same answer.
 
 Notes the input already links to (``[[Note]]`` anywhere, frontmatter
 included) are skipped: suggesting them again tells the agent nothing.
@@ -145,6 +145,8 @@ def suggest_links(
         return []
 
     # Read every note once: document frequencies need the whole vault.
+    # Not cached yet: this re-reads, re-scrubs and re-tokenizes every call.
+    # Fine at hundreds of notes; if it gets slow, cache terms by (path, mtime).
     notes = {
         path: tokenize(path.read_text(encoding="utf-8", errors="replace"))
         for path in vault.iter_notes()
