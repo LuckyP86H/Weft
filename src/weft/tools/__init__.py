@@ -11,7 +11,7 @@ from __future__ import annotations
 from mcp.server.mcpserver import MCPServer
 
 from weft.capture import INBOX_DIR
-from weft.tools import capture, conventions, scrub, search, vault_info
+from weft.tools import capture, conventions, scrub, search, suggest_links, vault_info
 from weft.vault import Vault
 
 
@@ -20,5 +20,6 @@ def register_all(mcp: MCPServer, vault: Vault, *, inbox_dir: str = INBOX_DIR) ->
     vault_info.register(mcp, vault)
     scrub.register(mcp, vault)
     search.register(mcp, vault)
+    suggest_links.register(mcp, vault)
     capture.register(mcp, vault, inbox_dir)
     conventions.register(mcp, vault)
