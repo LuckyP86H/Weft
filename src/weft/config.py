@@ -10,6 +10,9 @@ re-pointing one setting, not editing code. The path is looked up in this order
 
 If none is set, resolution fails with instructions. It never guesses.
 
+The same file can also name the folder captures go to (``inbox_dir``, set by
+``weft config set-inbox``), relative to the vault so it moves with it.
+
 This module only answers "where". It knows nothing about MCP or what is
 inside the vault. Every input (env, config path) is passed in, so tests need no
 patching of globals.
@@ -22,7 +25,7 @@ import os
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePath
 
 ENV_VAULT = "WEFT_VAULT"
 ENV_CONFIG = "WEFT_CONFIG"
@@ -70,11 +73,35 @@ def read_user_config(config_path: Path) -> dict:
 def save_vault_path(config_path: Path, vault: Path) -> Path:
     """Validate ``vault`` and persist it in the user config. Returns the path stored."""
     vault = _validate_dir(vault, source="the path you gave")
+    _save_key(config_path, "vault_path", str(vault))
+    return vault
+
+
+def read_inbox_dir(config_path: Path) -> str | None:
+    """The saved capture folder (vault-relative, POSIX), or ``None`` if unset."""
+    stored = read_user_config(config_path).get("inbox_dir")
+    if stored is None:
+        return None
+    return _validate_inbox_dir(str(stored), f"config file {config_path}")
+
+
+def save_inbox_dir(config_path: Path, inbox_dir: str) -> str:
+    """Validate ``inbox_dir`` and persist it in the user config. Returns the value stored.
+
+    Only the shape is checked here (relative, no ``..``); the vault boundary
+    still guards every write, and the folder is created on first capture.
+    """
+    inbox_dir = _validate_inbox_dir(inbox_dir, "the folder you gave")
+    _save_key(config_path, "inbox_dir", inbox_dir)
+    return inbox_dir
+
+
+def _save_key(config_path: Path, key: str, value: str) -> None:
+    """Set one key in the user config, keeping the others."""
     data = read_user_config(config_path)
-    data["vault_path"] = str(vault)
+    data[key] = value
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    return vault
 
 
 def resolve_vault(
@@ -98,6 +125,16 @@ def resolve_vault(
         "  weft serve --vault /path/to/vault        (per launch)\n"
         "Not sure where it is? Run: weft config detect"
     )
+
+
+def _validate_inbox_dir(value: str, source: str) -> str:
+    path = PurePath(value.strip())
+    if not path.parts or path.is_absolute() or ".." in path.parts:
+        raise ConfigError(
+            f"Inbox folder from {source} must be a folder inside the vault, "
+            f"like \"Inbox & Thoughts\": {value!r}"
+        )
+    return path.as_posix()
 
 
 def _validate_dir(path: Path, source: str) -> Path:

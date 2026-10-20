@@ -12,9 +12,12 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from weft.capture import INBOX_DIR
 from weft.config import (
     ConfigError,
+    read_inbox_dir,
     resolve_vault,
+    save_inbox_dir,
     save_vault_path,
     user_config_path,
 )
@@ -36,6 +39,10 @@ def _build_parser() -> argparse.ArgumentParser:
     config_sub.add_parser("detect", help="list vaults Obsidian knows about on this machine")
     set_vault = config_sub.add_parser("set-vault", help="save the vault path for this user")
     set_vault.add_argument("path")
+    set_inbox = config_sub.add_parser(
+        "set-inbox", help="save the vault-relative folder captures go to"
+    )
+    set_inbox.add_argument("folder")
     return parser
 
 
@@ -52,9 +59,15 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _serve(cli_vault: str | None) -> int:
-    resolved = resolve_vault(cli_vault, os.environ, user_config_path())
-    print(f"weft: serving vault {resolved.path} (from {resolved.source})", file=sys.stderr)
-    build_server(Vault(resolved.path)).run("stdio")
+    config_path = user_config_path()
+    resolved = resolve_vault(cli_vault, os.environ, config_path)
+    inbox_dir = read_inbox_dir(config_path) or INBOX_DIR
+    print(
+        f"weft: serving vault {resolved.path} (from {resolved.source}), "
+        f"capturing into {inbox_dir}/",
+        file=sys.stderr,
+    )
+    build_server(Vault(resolved.path), inbox_dir=inbox_dir).run("stdio")
     return 0
 
 
@@ -62,9 +75,13 @@ def _config(args: argparse.Namespace) -> int:
     if args.config_command == "set-vault":
         stored = save_vault_path(user_config_path(), Path(args.path))
         print(f"Saved vault: {stored}")
+    elif args.config_command == "set-inbox":
+        stored = save_inbox_dir(user_config_path(), args.folder)
+        print(f"Saved inbox folder: {stored}/")
     elif args.config_command == "show":
         resolved = resolve_vault(None, os.environ, user_config_path())
-        print(f"{resolved.path}\n  from {resolved.source}")
+        inbox_dir = read_inbox_dir(user_config_path()) or INBOX_DIR
+        print(f"{resolved.path}\n  from {resolved.source}\n  captures go to {inbox_dir}/")
     elif args.config_command == "detect":
         vaults = detect_vaults(obsidian_registry_path())
         if not vaults:

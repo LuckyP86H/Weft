@@ -98,7 +98,7 @@ def test_chinese_notes_link_by_shared_bigrams(links_vault, vault_dir):
     assert hit.matched_terms == ["知识", "笔记", "管理", "识管"]
 
 
-def test_ranks_by_shared_terms_then_title(links_vault):
+def test_ranks_by_shared_terms_then_candidate(links_vault):
     """Equal shared terms give equal scores; ties break by candidate."""
     hits = suggest_links(links_vault, text="peers replicate state")
     three_of_seven = round(3 * idf(3, 7), 3)

@@ -106,6 +106,19 @@ def test_capture_never_overwrites(vault, vault_dir):
     assert "body 0" in (vault_dir / paths[0]).read_text()
 
 
+def test_capture_into_a_configured_folder(vault, vault_dir):
+    """inbox_dir picks the folder, created on demand; names with spaces are fine."""
+    result = capture(vault, "a thought", "thought", now=NOW, inbox_dir="Inbox & Thoughts")
+    assert result.note_path == "Inbox & Thoughts/2026-10-14-0645-a-thought.md"
+    assert (vault_dir / "Inbox & Thoughts" / "2026-10-14-0645-a-thought.md").is_file()
+
+
+def test_configured_folder_cannot_escape_the_vault(vault):
+    """The vault boundary still applies, whatever the config says."""
+    with pytest.raises(PathEscapeError):
+        capture(vault, "a thought", "thought", now=NOW, inbox_dir="../outside")
+
+
 def test_capture_creates_inbox_when_missing(vault, vault_dir):
     """The inbox folder is created on demand."""
     (vault_dir / "inbox" / "a.md").unlink()

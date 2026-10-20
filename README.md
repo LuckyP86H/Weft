@@ -20,6 +20,7 @@ Requires Python 3.14 and [uv](https://docs.astral.sh/uv/) 0.13+ (`brew upgrade u
 uv sync
 uv run weft config detect                  # vaults Obsidian knows about on this machine
 uv run weft config set-vault "/path/to/vault"
+uv run weft config set-inbox "Inbox & Thoughts"   # optional: where captures go (default: inbox)
 uv run weft config show
 ```
 

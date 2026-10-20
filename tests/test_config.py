@@ -6,7 +6,9 @@ import pytest
 
 from weft.config import (
     ConfigError,
+    read_inbox_dir,
     resolve_vault,
+    save_inbox_dir,
     save_vault_path,
     user_config_path,
 )
@@ -109,3 +111,43 @@ def test_user_config_path_override_and_xdg(tmp_path):
     assert user_config_path({"WEFT_CONFIG": "~/x.json"}).name == "x.json"
     got = user_config_path({"XDG_CONFIG_HOME": str(tmp_path)})
     assert got == tmp_path / "weft" / "config.json"
+
+
+def test_inbox_dir_is_unset_by_default(tmp_path):
+    """No inbox_dir saved means None, so the caller picks the default."""
+    assert read_inbox_dir(tmp_path / "missing.json") is None
+
+
+@pytest.mark.parametrize(
+    ("given", "stored"),
+    [
+        ("Inbox & Thoughts", "Inbox & Thoughts"),
+        ("Inbox & Thoughts/", "Inbox & Thoughts"),
+        ("  notes/inbox ", "notes/inbox"),
+    ],
+)
+def test_save_inbox_dir_round_trips_and_keeps_other_keys(tmp_path, given, stored):
+    """Saving the inbox keeps the vault path and reads back normalized."""
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({"vault_path": "/v"}))
+
+    assert save_inbox_dir(cfg, given) == stored
+
+    assert json.loads(cfg.read_text()) == {"vault_path": "/v", "inbox_dir": stored}
+    assert read_inbox_dir(cfg) == stored
+
+
+@pytest.mark.parametrize("bad", ["", "  ", ".", "/abs/inbox", "../outside", "a/../../b"])
+def test_save_inbox_dir_refuses_paths_outside_the_vault(tmp_path, bad):
+    """The inbox must be a folder inside the vault; nothing is saved otherwise."""
+    with pytest.raises(ConfigError, match="inside the vault"):
+        save_inbox_dir(tmp_path / "config.json", bad)
+    assert not (tmp_path / "config.json").exists()
+
+
+def test_bad_inbox_dir_in_config_file_is_reported(tmp_path):
+    """A hand-edited inbox_dir that escapes the vault is an error, not ignored."""
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({"inbox_dir": "../outside"}))
+    with pytest.raises(ConfigError, match="inside the vault"):
+        read_inbox_dir(cfg)
