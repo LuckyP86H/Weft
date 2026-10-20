@@ -17,6 +17,10 @@ def categories(result):
         ("password:\nhunter2 tail", "[REDACTED:credential] tail"),
         ("my key is sk-abc123XYZ today", "my key is [REDACTED:credential] today"),
         ("token ghp_abcdefghijklmnopqrstuvwxyz0123", "token [REDACTED:credential]"),
+        (
+            "pat github_pat_11ABCDEFG0123456789_abcdefghijKLMNOP done",
+            "pat [REDACTED:credential] done",
+        ),
         ("slack xoxb-1234567890-abcdef", "slack [REDACTED:credential]"),
         ("aws AKIAABCDEFGHIJKLMNOP key", "aws [REDACTED:credential] key"),
         ("Authorization: Bearer abc.def-ghi_123=", "Authorization: [REDACTED:credential]"),
