@@ -128,3 +128,9 @@ def test_badly_encoded_note_does_not_break_search(search_vault, vault_dir):
     (vault_dir / "notes" / "latin1.md").write_bytes(b"caf\xe9 crdt\n")
     paths = [h.path for h in search(search_vault, "crdt")]
     assert "notes/latin1.md" in paths
+
+
+def test_snippet_is_scrubbed():
+    """A note never captured through Weft can't leak a secret via a snippet."""
+    text = "GitHub PAT for the POC:\ngithub_pat_11ABCDEFG0123456789_abcdefghij\n"
+    assert snippet_for(text, ["github"]) == "GitHub PAT for the POC:\n[REDACTED:credential]"
