@@ -4,6 +4,7 @@ This is the same path Claude Code / Claude Desktop use, so it proves the
 vault location is picked up from each configuration channel.
 """
 
+import os
 import sys
 
 from mcp import Client, StdioServerParameters
@@ -12,10 +13,18 @@ from weft.cli import main
 
 
 def _params(*extra_args, env=None):
+    # The MCP SDK only inherits a safe allowlist of env vars (HOME, PATH, ...),
+    # not PYTHONPATH. When tests run from source (not installed), the
+    # subprocess needs PYTHONPATH to import weft.
+    base_env = {}
+    if "PYTHONPATH" in os.environ:
+        base_env["PYTHONPATH"] = os.environ["PYTHONPATH"]
+    if env:
+        base_env.update(env)
     return StdioServerParameters(
         command=sys.executable,
         args=["-m", "weft", "serve", *extra_args],
-        env=env,
+        env=base_env or None,
     )
 
 
