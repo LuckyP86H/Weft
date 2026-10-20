@@ -64,7 +64,7 @@ Two layers. v0.1 ships layer 2; layer 1 is parked (see §8).
 
 | Category | Method | Marker |
 |---|---|---|
-| Credentials & secrets | Regex: `sk-…`, `ghp_…`, `xox…`, `AKIA…`, `-----BEGIN … PRIVATE KEY-----`, `password\s*[:=]`, bearer tokens, generic `api[_-]?key\s*[:=]\s*\S+` | `[REDACTED:credential]` |
+| Credentials & secrets | Regex: `sk-…`, `ghp_…`, `github_pat_…`, `xox…`, `AKIA…`, `-----BEGIN … PRIVATE KEY-----`, `password\s*[:=]`, bearer tokens, generic `api[_-]?key\s*[:=]\s*\S+` | `[REDACTED:credential]` |
 | Email addresses | Regex | `[REDACTED:email]` |
 | Phone numbers | Regex (NA + international-ish) | `[REDACTED:phone]` |
 | Configured terms | User's `redact_terms` list (milestone 6, not built yet): company name, project codenames, team names, internal URLs | `[REDACTED:term]` |

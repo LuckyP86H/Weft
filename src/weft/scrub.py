@@ -38,6 +38,7 @@ _RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
         re.compile(
             r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|\Z)"
             r"|\bsk-[A-Za-z0-9_-]{8,}"
+            r"|\bgithub_pat_[A-Za-z0-9_]{20,}"
             r"|\bgh[pousr]_[A-Za-z0-9]{20,}"
             r"|\bxox[baprs]-[A-Za-z0-9-]{10,}"
             r"|\bAKIA[0-9A-Z]{16}\b"
