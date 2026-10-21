@@ -9,13 +9,14 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
+from pydantic import Field
 
-from weft.capture import INBOX_DIR, capture
+from weft.capture import INBOX_DIR, NoteMeta, capture
 from weft.types import SourceType
 from weft.vault import Vault
 
@@ -41,11 +42,27 @@ def register(mcp: MCPServer, vault: Vault, inbox_dir: str = INBOX_DIR) -> None:
             idempotentHint=False,  # every call files a new note
         ),
     )
-    def weft_capture(
+    # The parameters are the agent-facing schema, so they stay flat.
+    def weft_capture(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         text: str,
         source_type: SourceType,
         source: str | None = None,
         title_hint: str | None = None,
+        note_type: Annotated[
+            str | None, Field(description="The vault's note type, written as `type`.")
+        ] = None,
+        summary: Annotated[
+            str | None, Field(description="One-sentence summary for the frontmatter.")
+        ] = None,
+        domain: Annotated[
+            str | None, Field(description="Domain label, as the vault's conventions name it.")
+        ] = None,
+        hub: Annotated[
+            str | None, Field(description="Name of an existing hub note to link as the parent.")
+        ] = None,
+        tags: Annotated[
+            list[str] | None, Field(description="Obsidian tags, without spaces.")
+        ] = None,
         dry_run: bool = False,
     ) -> CallToolResult:
         """Scrub ``text`` and file it as a new note in the vault's inbox.
@@ -54,6 +71,13 @@ def register(mcp: MCPServer, vault: Vault, inbox_dir: str = INBOX_DIR) -> None:
         written, including from the filename, title and source. An existing
         note is never overwritten. Returns the vault-relative note path and a
         counts-only redaction report.
+
+        If the vault documents its conventions (for example an AGENTS.md at
+        its root), fill ``note_type``, ``summary``, ``domain``, ``hub`` and
+        ``tags`` to match
+        them, so the note fits in with the rest of the vault. ``note_type``
+        is written as ``type``. ``hub`` must be an existing note. All of them
+        are optional and scrubbed too.
 
         Set ``dry_run`` to preview the filename and redaction report without
         writing anything.
@@ -67,6 +91,13 @@ def register(mcp: MCPServer, vault: Vault, inbox_dir: str = INBOX_DIR) -> None:
                 inbox_dir=inbox_dir,
                 source=source,
                 title_hint=title_hint,
+                meta=NoteMeta(
+                    note_type=note_type,
+                    summary=summary,
+                    domain=domain,
+                    hub=hub,
+                    tags=tuple(tags or ()),
+                ),
                 dry_run=dry_run,
             )
         except ValueError as exc:

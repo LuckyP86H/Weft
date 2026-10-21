@@ -88,6 +88,39 @@ async def test_capture_tool_files_a_scrubbed_note(mcp_client, vault_dir):
     assert "[REDACTED:email]" in written
 
 
+async def test_capture_tool_writes_vault_fields(mcp_client, vault_dir):
+    """summary, domain, hub and tags pass through MCP into the frontmatter."""
+    async with mcp_client:
+        result = await mcp_client.call_tool(
+            "weft_capture",
+            {
+                "text": "a thought",
+                "source_type": "thought",
+                "note_type": "reflection",
+                "summary": "One line.",
+                "domain": "Thought Stream",
+                "hub": "top",
+                "tags": ["inbox/thoughts"],
+            },
+        )
+    assert not result.is_error
+    written = (vault_dir / result.structured_content["note_path"]).read_text(encoding="utf-8")
+    assert 'type: "reflection"' in written
+    assert 'hub: "[[top]]"' in written
+    assert 'summary: "One line."' in written
+    assert '  - "inbox/thoughts"' in written
+
+
+async def test_capture_tool_explains_an_unknown_hub(mcp_client):
+    """A hub that does not exist comes back as a readable tool error."""
+    async with mcp_client:
+        result = await mcp_client.call_tool(
+            "weft_capture", {"text": "x", "source_type": "thought", "hub": "Nope"}
+        )
+    assert result.is_error
+    assert "existing note" in result.content[0].text
+
+
 async def test_capture_tool_rejects_unknown_source_type(mcp_client, vault_dir):
     """An unknown source_type is rejected before any file is written."""
     before = sorted(p.name for p in (vault_dir / "inbox").iterdir())

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from weft.capture import capture, slugify
+from weft.capture import NoteMeta, capture, slugify
 from weft.vault import PathEscapeError, Vault
 
 NOW = datetime(2026, 10, 14, 6, 45, 30, tzinfo=timezone.utc)
@@ -28,6 +28,8 @@ def vault(vault_dir):
         ("今天复盘了季度规划，明天要跟Jeffrey对齐", "今天复盘了季度规划明-jeffrey"),
         ("今天学了MCP", "今天学了-mcp"),
         ("[REDACTED:email] wrote", "redacted-email-wrote"),
+        ("判断交给agent。Ping me", "判断交给-agent-ping-me"),
+        ("ﬁle naïve", "file-naive"),
     ],
 )
 def test_slugify(text, expected):
@@ -184,3 +186,76 @@ def test_create_unique_refuses_directory_escape(vault):
     """A directory outside the vault is refused."""
     with pytest.raises(PathEscapeError):
         vault.create_unique("../outside", "n.md", "x")
+
+
+def test_vault_fields_are_written_in_frontmatter(vault, vault_dir):
+    """summary, domain, hub and tags land in the frontmatter, hub as a wikilink."""
+    (vault_dir / "notes" / "Thought Stream.md").write_text("# hub")
+    result = capture(
+        vault,
+        "Deterministic tools beat clever prompts.",
+        "thought",
+        now=NOW,
+        meta=NoteMeta(
+            note_type="reflection",
+            summary="  Tools should be deterministic.\nignored second line",
+            domain="Backend Engineering",
+            hub="[[Thought Stream]]",
+            tags=("#inbox/thoughts", "mcp", "mcp", " "),
+        ),
+    )
+    written = (vault_dir / result.note_path).read_text(encoding="utf-8")
+    assert written.startswith(
+        "---\n"
+        'title: "Deterministic tools beat clever prompts."\n'
+        "created: 2026-10-14T06:45:30+00:00\n"
+        "source_type: thought\n"
+        'type: "reflection"\n'
+        'domain: "Backend Engineering"\n'
+        'hub: "[[Thought Stream]]"\n'
+        'summary: "Tools should be deterministic."\n'
+        "tags:\n"
+        '  - "inbox/thoughts"\n'
+        '  - "mcp"\n'
+        "scrubbed: true\n"
+    )
+
+
+def test_vault_fields_are_scrubbed(vault, vault_dir):
+    """A secret in a summary, domain or tag is redacted and counted."""
+    result = capture(
+        vault,
+        "body",
+        "work",
+        now=NOW,
+        meta=NoteMeta(summary="ask boss@corp.com", domain="sk-abc123XYZ99", tags=("a@b.com",)),
+    )
+    written = (vault_dir / result.note_path).read_text(encoding="utf-8")
+    for leaked in ("boss@corp.com", "sk-abc123XYZ99", "a@b.com"):
+        assert leaked not in written
+    assert {r.category: r.count for r in result.redactions} == {"email": 2, "credential": 1}
+
+
+@pytest.mark.parametrize(
+    ("hub", "written"),
+    [("b", 'hub: "[[b]]"'), ("[[b]]", 'hub: "[[b]]"'), ("[[b|Bee]]", 'hub: "[[b]]"')],
+)
+def test_hub_accepts_names_and_wikilinks(vault, vault_dir, hub, written):
+    """A hub can be given bare or as a wikilink; it is written as [[name]]."""
+    result = capture(vault, "body", "thought", now=NOW, meta=NoteMeta(hub=hub))
+    assert written in (vault_dir / result.note_path).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_unknown_hub_is_refused_before_writing(vault, vault_dir, dry_run):
+    """A hub that is not an existing note fails, and nothing is written."""
+    before = sorted(p.name for p in (vault_dir / "inbox").iterdir())
+    with pytest.raises(ValueError, match="existing note"):
+        capture(vault, "body", "thought", now=NOW, meta=NoteMeta(hub="Nope"), dry_run=dry_run)
+    assert sorted(p.name for p in (vault_dir / "inbox").iterdir()) == before
+
+
+def test_tags_with_spaces_are_refused(vault):
+    """Obsidian tags cannot contain spaces, so the call fails instead of guessing."""
+    with pytest.raises(ValueError, match="spaces"):
+        capture(vault, "body", "thought", now=NOW, meta=NoteMeta(tags=("two words",)))
