@@ -1,4 +1,4 @@
-"""MCP tool adapters.
+"""MCP tool (and resource) adapters.
 
 Each module exposes ``register(mcp, vault)``; ``capture`` also takes the
 folder it files into. A tool here is a thin shell: it declares the schema the
@@ -11,7 +11,7 @@ from __future__ import annotations
 from mcp.server.mcpserver import MCPServer
 
 from weft.capture import INBOX_DIR
-from weft.tools import capture, scrub, search, suggest_links, vault_info
+from weft.tools import capture, conventions, scrub, search, suggest_links, vault_info
 from weft.vault import Vault
 
 
@@ -22,3 +22,4 @@ def register_all(mcp: MCPServer, vault: Vault, *, inbox_dir: str = INBOX_DIR) ->
     search.register(mcp, vault)
     suggest_links.register(mcp, vault)
     capture.register(mcp, vault, inbox_dir)
+    conventions.register(mcp, vault)

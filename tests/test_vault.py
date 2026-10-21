@@ -19,6 +19,17 @@ def test_info(vault_dir):
     assert info.root == str(vault_dir.resolve())
 
 
+def test_conventions_file_is_found_only_at_the_root(vault_dir):
+    """AGENTS.md counts only at the vault root, not in a subfolder."""
+    vault = Vault(vault_dir)
+    (vault_dir / "notes" / "AGENTS.md").write_text("not the vault's rules")
+    assert vault.conventions_path is None
+    assert vault.info().conventions_file is None
+    (vault_dir / "AGENTS.md").write_text("# Rules")
+    assert vault.conventions_path == vault_dir.resolve() / "AGENTS.md"
+    assert vault.info().conventions_file == "AGENTS.md"
+
+
 def test_plain_folder_is_not_flagged_as_obsidian_vault(tmp_path):
     """A folder without .obsidian is not an Obsidian vault."""
     assert Vault(tmp_path).info().is_obsidian_vault is False

@@ -52,7 +52,33 @@ async def test_vault_info_reports_the_injected_vault(mcp_client, vault_dir):
         "root": str(vault_dir.resolve()),
         "is_obsidian_vault": True,
         "note_count": 3,
+        "conventions_file": None,
     }
+
+
+async def test_vault_without_agents_md_has_no_conventions(mcp_client):
+    """No AGENTS.md: no resource, and the instructions don't mention one."""
+    async with mcp_client:
+        resources = await mcp_client.list_resources()
+        assert resources.resources == []
+        assert "weft://conventions" not in (mcp_client.instructions or "")
+
+
+async def test_agents_md_is_offered_as_a_scrubbed_resource(vault_dir):
+    """AGENTS.md is listed, read fresh, scrubbed, and pointed to by the instructions."""
+    agents = vault_dir / "AGENTS.md"
+    agents.write_text("# Rules\nhub: [[Dashboard]]\nowner: me@acme.com\n")
+    async with Client(build_server(Vault(vault_dir))) as client:
+        resources = await client.list_resources()
+        assert [str(r.uri) for r in resources.resources] == ["weft://conventions"]
+        assert "weft://conventions" in client.instructions
+        agents.write_text("# Rules v2\nowner: me@acme.com\n")
+        result = await client.read_resource("weft://conventions")
+        info = await client.call_tool("weft_vault_info", {})
+    [content] = result.contents
+    assert content.text == "# Rules v2\nowner: [REDACTED:email]\n"
+    assert content.mime_type == "text/markdown"
+    assert info.structured_content["conventions_file"] == "AGENTS.md"
 
 
 async def test_scrub_tool_redacts_and_reports_counts(mcp_client):

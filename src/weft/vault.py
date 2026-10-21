@@ -14,6 +14,10 @@ from pathlib import Path
 # Obsidian's own bookkeeping and common tool folders: never user notes.
 _SKIPPED_DIRS = {".obsidian", ".trash", ".git"}
 
+# A vault-root file of rules for AI agents (frontmatter schema, folders,
+# hubs). Weft does not interpret it; it hands it to the agent.
+CONVENTIONS_FILE = "AGENTS.md"
+
 
 class VaultError(Exception):
     """Base class for vault problems."""
@@ -30,6 +34,7 @@ class VaultInfo:
     root: str
     is_obsidian_vault: bool
     note_count: int
+    conventions_file: str | None
 
 
 class Vault:
@@ -103,10 +108,17 @@ class Vault:
         """True when the directory looks like an Obsidian vault."""
         return (self.root / ".obsidian").is_dir()
 
+    @property
+    def conventions_path(self) -> Path | None:
+        """The vault's ``AGENTS.md``, if it has one."""
+        path = self.root / CONVENTIONS_FILE
+        return path if path.is_file() else None
+
     def info(self) -> VaultInfo:
-        """Summarize the vault: path, Obsidian check, and note count."""
+        """Summarize the vault: path, Obsidian check, note count, conventions file."""
         return VaultInfo(
             root=str(self.root),
             is_obsidian_vault=self.is_obsidian_vault,
             note_count=sum(1 for _ in self.iter_notes()),
+            conventions_file=CONVENTIONS_FILE if self.conventions_path else None,
         )

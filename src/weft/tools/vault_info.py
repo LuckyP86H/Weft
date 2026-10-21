@@ -22,6 +22,8 @@ def register(mcp: MCPServer, vault: Vault) -> None:
         """Report the Obsidian vault Weft is connected to.
 
         Returns the vault's absolute path, whether it looks like an Obsidian
-        vault (has a .obsidian folder), and how many markdown notes it holds.
+        vault (has a .obsidian folder), how many markdown notes it holds, and
+        its conventions file (AGENTS.md) if it has one, readable as the
+        weft://conventions resource.
         """
         return asdict(vault.info())
