@@ -20,18 +20,19 @@ This is the single most important section. Read it before writing any code.
 - **Rule of thumb:** if it requires judgment, it belongs in the agent. If it's
   a deterministic operation on local data, it belongs in the server.
 
-```
-You (chaotic input)
-  │  "capture this: <raw text>"
-  ▼
-Claude (agent) ──understands intent──▶ calls weft_capture(text, source_type)
-                                          │
-Weft MCP server ◀── stdio ────────────────┘
-  │  1. hygiene scrub (deterministic)
-  │  2. write markdown + frontmatter to vault/inbox/
-  │  3. return { note_path, redaction_report }
-  ▼
-Obsidian vault ── [[wikilinks]] ──▶ knowledge graph (rendered by Obsidian)
+```mermaid
+sequenceDiagram
+    actor You
+    participant Claude as Claude (agent)
+    participant Weft as Weft MCP server
+    participant Vault as Obsidian vault
+    You->>Claude: "capture this: <raw text>"
+    Note over Claude: understands intent,<br/>picks source_type and title
+    Claude->>Weft: tools/call weft_capture(text, source_type) over stdio
+    Weft->>Weft: 1. hygiene scrub (deterministic)
+    Weft->>Vault: 2. write markdown + frontmatter to the inbox folder
+    Weft-->>Claude: 3. { note_path, redaction_report }
+    Note over Vault: [[wikilinks]] become the knowledge graph<br/>(rendered by Obsidian)
 ```
 
 ## 2. Design principles
@@ -78,12 +79,13 @@ Every scrub returns a report: `{ redactions: [{category, count}], scrubbed_text 
 Deliberately out of scope for v0.1: ML-based PII/NER detection (fuzzy → belongs
 in a later layer, or in the agent's judgment).
 
-## 4. v0.1 tools (four, atomic)
+## 4. v0.1 tools (five, atomic) and one resource
 
 ### `weft_scrub`
 - **In:** `{ text: string }`
 - **Out:** `{ scrubbed_text, redactions: [{category, count}] }`
-- **Behavior:** pure function, no file I/O. Runs §3 patterns + `redact_terms`.
+- **Behavior:** pure function, no file I/O. Runs the §3 patterns (`redact_terms`
+  joins them in milestone 6).
 - **Why first:** the testable core. Table-driven unit tests live here.
 
 ### `weft_capture`
@@ -106,7 +108,9 @@ in a later layer, or in the agent's judgment).
 - **In:** `{ query: string, limit?: number }` (default limit 10)
 - **Out:** `[{ path, snippet, score }]`
 - **Behavior:** case-insensitive full-text search over `*.md` in the vault,
-  ranked by simple term frequency. Snippet = ~2 lines around first match.
+  ranked by simple term frequency. Snippet = ~2 lines around first match,
+  scrubbed before it is returned (the note may hold a secret the scrubber
+  would have caught at capture time).
 
 ### `weft_suggest_links`
 - **In:** `{ note_path: string }` or `{ text: string }`
@@ -119,6 +123,18 @@ in a later layer, or in the agent's judgment).
   ranking; the *agent* decides which links to insert.
 - **Why not auto-link:** linking is a judgment call → belongs in the agent.
 
+### `weft_vault_info`
+- **In:** nothing. **Out:** `{ root, is_obsidian_vault, note_count, conventions_file }`
+- **Behavior:** reports which vault the server is bound to. Milestone 0's
+  proof-of-wiring tool, and the first call to make when something looks wrong.
+
+### Resource `weft://conventions`
+- **What:** the vault's own `AGENTS.md` (frontmatter fields, folders, hubs),
+  scrubbed, offered only when the vault has one. The server instructions tell
+  the agent it exists.
+- **Why a resource:** it *shows* context the agent reads before capturing; it
+  does nothing. Choosing a `domain` or `hub` from it is judgment → agent.
+
 ## 5. Vault layout and configuration
 
 ```
@@ -126,6 +142,9 @@ in a later layer, or in the agent's judgment).
   inbox/              # fresh captures land here (weft_capture writes here)
   notes/              # curated notes — you promote from inbox by hand
 ```
+
+`inbox/` is only the default. A vault that already has an inbox points Weft at
+it with `weft config set-inbox "<folder>"` (below).
 
 **The vault location is never hard-coded and never stored inside the vault**
 (a config file in the vault can't tell you where the vault is). It is resolved
@@ -195,9 +214,9 @@ weft/
     config.py             # WHERE is the vault (flag > env > user config)
     discovery.py          # read-only: vaults Obsidian already knows about
     vault.py              # safe filesystem boundary (path-escape guard, note listing)
-    tools/                # thin MCP adapters, one module per tool: register(mcp, vault)
+    tools/                # thin MCP adapters, one module per tool or resource: register(mcp, vault)
     server.py             # composition root: build_server(vault) -> MCPServer
-    cli.py                # `weft serve`, `weft config show|detect|set-vault`
+    cli.py                # `weft serve`, `weft config show|detect|set-vault|set-inbox`
     scrub.py              # (milestone 1) hygiene layer, pure functions
     capture.py            # (milestone 2) frontmatter + filename generation + inbox write
     search.py             # (milestone 3) term-frequency search, pure functions
@@ -232,7 +251,7 @@ Run locally: `uv run weft serve` (stdio JSON-RPC), or without uv:
 3. `weft_search` (done)
 4. `weft_suggest_links` (done)
 5. `claude mcp add` → dogfood for one week on real daily inputs
-6. Per-vault settings (`redact_terms`, `inbox_dir`) + README polish
+6. Per-vault settings (`redact_terms`; `inbox_dir` is done) + README polish
 
 **Definition of done for v0.1:** you capture 10 real thoughts across a week,
 every one scrubbed and filed without you touching a file by hand, and
@@ -279,10 +298,13 @@ not a Resource or a Prompt. (Rule of thumb: tools *do* things, resources
 
 ### Your first 15 minutes (do this the day v0.1 is done)
 
-1. **Inspector:** boot it, connect via stdio (command:
-   `uv`, args: `run --directory /absolute/path/to/weft weft serve`), call `weft_scrub` with
-   `{"text": "my key is sk-abc123XYZ and my email is me@acme.com"}`.
+1. **Inspector:** run `npx @modelcontextprotocol/inspector /absolute/path/to/weft/.venv/bin/weft serve`,
+   open the URL it prints, click **Connect**, then **Tools → List Tools →
+   weft_scrub**. Run it with
+   `My key is sk-abc123XYZ456def and my email is paul@example.com`.
    Watch the redaction report — that's your hygiene layer working.
+
+   ![Calling weft_scrub in the MCP Inspector](docs/images/inspector-scrub.gif)
 2. **Claude Code:** run `claude mcp add --transport stdio --scope user weft -- /absolute/path/to/weft/.venv/bin/weft serve`
    (options like `-e` go before the server name; the vault comes from `weft config set-vault`),
    then say: *"capture this thought: just realized deterministic tools beat
@@ -315,6 +337,12 @@ the project pays off: your past self answering your present self.
 After ~10 notes: *"what should my note on CRDTs link to?"* → ranked
 `[[candidates]]` with matched terms. You (or the agent, at your direction)
 insert the links. Open Graph view and see threads appear.
+
+<img src="docs/images/inspector-suggest-links.png" width="400" alt="weft_suggest_links in the MCP Inspector: ranked candidates with the shared terms behind each score">
+
+*The same call in the Inspector, on a four-note demo vault. On a vault this
+small, everyday words such as `make` and `step` still count; the rarity
+weighting matters more as the vault grows.*
 
 ### With an AGENTS.md vault and obsidian-guanjia
 
