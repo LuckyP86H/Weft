@@ -96,8 +96,9 @@ in a later layer, or in the agent's judgment).
 - **Out:** `{ note_path, redaction_report }`
 - **Behavior:**
   1. Run `weft_scrub` on `text`.
-  2. Generate filename: `YYYY-MM-DD-HHmm-<slug>.md` (slug = first ~5 words,
-     lowercase, hyphenated, ASCII-folded).
+  2. Generate filename: `YYYY-MM-DD-HHmm-<slug>.md` (slug = up to 10 CJK
+     characters kept as-is, then the first ~5 lowercase words,
+     ASCII-folded and hyphenated).
   3. Write to the inbox folder with frontmatter (see §6). `inbox/` by default;
      `weft config set-inbox "<folder>"` points it at the vault's own inbox.
   4. Never overwrites: on collision, append `-2`, `-3`.
