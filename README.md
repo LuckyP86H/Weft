@@ -43,10 +43,10 @@ If none is set it refuses to start and tells you how to fix it. On a new laptop,
 The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is a web UI that talks to the server the way Claude would, so you can call each tool by hand before wiring up a client:
 
 ```sh
-npx @modelcontextprotocol/inspector /path/to/Weft/.venv/bin/weft serve
+npx @modelcontextprotocol/inspector@0.17.2 /path/to/Weft/.venv/bin/weft serve
 ```
 
-Open the URL it prints, click **Connect**, then **Tools → List Tools**, pick a tool and **Run Tool**:
+The version is pinned because the screenshots below were taken with 0.17.2; newer Inspector releases have a different layout, though Weft behaves the same. Open the URL it prints, click **Connect**, then **Tools → List Tools**, pick a tool and **Run Tool**:
 
 ![Calling weft_scrub in the MCP Inspector: the key, email and phone number come back as REDACTED markers with a counts-only report](docs/images/inspector-scrub.gif)
 

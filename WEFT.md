@@ -299,7 +299,8 @@ not a Resource or a Prompt. (Rule of thumb: tools *do* things, resources
 
 ### Your first 15 minutes (do this the day v0.1 is done)
 
-1. **Inspector:** run `npx @modelcontextprotocol/inspector /absolute/path/to/weft/.venv/bin/weft serve`,
+1. **Inspector:** run `npx @modelcontextprotocol/inspector@0.17.2 /absolute/path/to/weft/.venv/bin/weft serve`
+   (pinned to the version the GIF was recorded with; newer releases have a different layout),
    open the URL it prints, click **Connect**, then **Tools → List Tools →
    weft_scrub**. Run it with
    `My key is sk-abc123XYZ456def and my email is paul@example.com`.
