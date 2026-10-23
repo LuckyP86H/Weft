@@ -29,14 +29,15 @@ Claude (agent) ──understands intent──▶ calls weft_capture(text, source
 Weft MCP server ◀── stdio ────────────────┘
   │  1. hygiene scrub (deterministic)
   │  2. write markdown + frontmatter to vault/inbox/
-  │  3. return { note_path, redaction_report }
+  │  3. return { note_path, redactions }
   ▼
 Obsidian vault ── [[wikilinks]] ──▶ knowledge graph (rendered by Obsidian)
 ```
 
 ## 2. Design principles
 
-1. **Solid first, fancy later.** v0.1 is four tools, well-tested. Nothing more.
+1. **Solid first, fancy later.** v0.1 is a few small tools and one read-only
+   resource, well-tested. Nothing more.
 2. **Deterministic over clever.** The server does exact, testable operations
    (regex, file I/O, token overlap). All fuzzy work lives in the agent.
 3. **Local-only.** stdio transport. No network calls from the server, ever.
@@ -90,11 +91,12 @@ in a later layer, or in the agent's judgment).
   note_type?: string, summary?: string, domain?: string, hub?: string,
   tags?: string[], dry_run?: bool }`
 - `source_type`: `article | news | video | thought | book | seminar | work | conversation | other`
-- **Out:** `{ note_path, redaction_report }`
+- **Out:** `{ note_path, redactions }`
 - **Behavior:**
   1. Run `weft_scrub` on `text`.
-  2. Generate filename: `YYYY-MM-DD-HHmm-<slug>.md` (slug = first ~5 words,
-     lowercase, hyphenated, ASCII-folded).
+  2. Generate filename: `YYYY-MM-DD-HHmm-<slug>.md` (slug = up to 10 CJK
+     characters kept as-is, then the first ~5 lowercase words,
+     ASCII-folded and hyphenated).
   3. Write to the inbox folder with frontmatter (see §6). `inbox/` by default;
      `weft config set-inbox "<folder>"` points it at the vault's own inbox.
   4. Never overwrites: on collision, append `-2`, `-3`.
@@ -217,7 +219,8 @@ Run locally: `uv run weft serve` (stdio JSON-RPC), or without uv:
 - Auto-tagging / entity extraction via embeddings (needs a model; fuzzy → agent)
 - `daily_digest` (that's an agent *prompt*, not a server tool — candidate for
   MCP Prompts in v0.2)
-- MCP Resources (exposing vault notes as resources — useful once tools are solid)
+- MCP Resources for the notes themselves (v0.1 exposes only the vault's
+  AGENTS.md, as `weft://conventions`)
 - Obsidian plugin, mobile capture shortcut, cloud sync
 - Anything with a network call
 
@@ -225,10 +228,10 @@ Run locally: `uv run weft serve` (stdio JSON-RPC), or without uv:
 
 0. **Foundation (done):** config resolution, vault boundary, server wiring,
    CLI, `weft_vault_info` as the one proof-of-wiring tool, tests per layer
-1. `weft_scrub` with pytest parametrized tests (the core — get this right)
-2. `weft_capture` (frontmatter + file writing + collision handling)
-3. `weft_search`
-4. `weft_suggest_links`
+1. `weft_scrub` with pytest parametrized tests (the core — get this right) (done)
+2. `weft_capture` (frontmatter + file writing + collision handling) (done)
+3. `weft_search` (done)
+4. `weft_suggest_links` (done)
 5. `claude mcp add` → dogfood for one week on real daily inputs
 6. Per-vault settings (`redact_terms`, `inbox_dir`) + README polish
 
@@ -271,6 +274,7 @@ not a Resource or a Prompt. (Rule of thumb: tools *do* things, resources
 | 3 — search | Tool design (limits, ranking), returning structured results the agent can reason over |
 | 4 — suggest_links | Where the server stops and the agent starts (ranking vs. deciding) |
 | 5 — `claude mcp add` | Client configuration, scopes, Inspector debugging when a call fails |
+| `weft://conventions` | Resources vs. tools: context the agent reads, not an action; server instructions as the hint that it exists |
 
 ## 12. Usage guide — from built to daily habit
 
@@ -283,8 +287,9 @@ not a Resource or a Prompt. (Rule of thumb: tools *do* things, resources
 2. **Claude Code:** run `claude mcp add --transport stdio --scope user weft -- /absolute/path/to/weft/.venv/bin/weft serve`
    (options like `-e` go before the server name; the vault comes from `weft config set-vault`),
    then say: *"capture this thought: just realized deterministic tools beat
-   clever prompts for filing"*. Open `<vault>/inbox/` — your note is there,
-   frontmatter and all.
+   clever prompts for filing"*. Open your inbox folder (`inbox/`, unless you
+   ran `weft config set-inbox "<folder>"`) — your note is there, frontmatter
+   and all.
 3. **Obsidian:** open the vault, find the note, switch to Graph view.
    One node. Come back after a week of captures and watch it grow.
 
@@ -301,7 +306,7 @@ In Claude Code or Claude Desktop, just talk:
 - *"quick thought: Bible study tonight was about stewardship"*
 - *"I read a PR that used CRDTs for collaborative editing, work-related"*
   → the agent picks `source_type: work`, the server scrubs company terms,
-  the note lands in `inbox/` with `scrubbed: true`.
+  the note lands in your inbox folder with `scrubbed: true`.
 
 **`weft_search` — "what did I think about X?"**
 *"search my vault for CRDT"* → you get paths + snippets. This is the moment
@@ -311,6 +316,22 @@ the project pays off: your past self answering your present self.
 After ~10 notes: *"what should my note on CRDTs link to?"* → ranked
 `[[candidates]]` with matched terms. You (or the agent, at your direction)
 insert the links. Open Graph view and see threads appear.
+
+### With an AGENTS.md vault and Nexus
+
+Each part does what it is good at, and none of them repeats another's job:
+
+| Part | Owns | Does not |
+|---|---|---|
+| **Claude** (the agent) | Judgment: which `note_type`, `domain`, `hub`, `summary`, `tags`; which suggested links are real | Touch the disk directly |
+| **Weft** (this server) | Scrubbing, filing into the inbox folder, search, link ranking, handing over `AGENTS.md` | Call a model, or decide anything fuzzy |
+| **Nexus** (in Obsidian) | Templates, Bases tables, hubs, hygiene, moving notes into their domain | Need to rewrite Weft's notes: they already carry the fields its hygiene check looks for |
+
+Setup, once: `weft config set-inbox "Inbox & Thoughts"`. Then in Claude Code,
+say *"capture this thought: …"*. Claude reads `weft://conventions`, fills the
+vault fields and calls `weft_capture`. In Obsidian, Nexus's hygiene check
+finds nothing to fix, and the note digest its classification audit sends
+already has the note's `type`, `domain` and `summary`.
 
 ### A day in the life (the end goal, in miniature)
 
