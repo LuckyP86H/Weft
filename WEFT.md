@@ -34,6 +34,7 @@ sequenceDiagram
     Weft-->>Claude: 3. { note_path, redactions }
     Note over Vault: [[wikilinks]] become the knowledge graph<br/>(rendered by Obsidian)
 ```
+```
 
 ## 2. Design principles
 
@@ -93,7 +94,7 @@ in a later layer, or in the agent's judgment).
   note_type?: string, summary?: string, domain?: string, hub?: string,
   tags?: string[], dry_run?: bool }`
 - `source_type`: `article | news | video | thought | book | seminar | work | conversation | other`
-- **Out:** `{ note_path, redaction_report }`
+- **Out:** `{ note_path, redactions }`
 - **Behavior:**
   1. Run `weft_scrub` on `text`.
   2. Generate filename: `YYYY-MM-DD-HHmm-<slug>.md` (slug = up to 10 CJK
