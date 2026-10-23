@@ -44,7 +44,7 @@ Use the venv binary, not `uv run`: Claude Desktop may not have `uv` on its PATH,
 
 ### Use it with a vault that has an AGENTS.md
 
-If your vault keeps its rules for AI agents in an `AGENTS.md` at its root (frontmatter fields, folders, hubs), Weft hands that file to Claude as the `weft://conventions` resource and tells it to follow the file when capturing. Claude picks the values that need judgment; Weft scrubs and files the note. The result looks like a note your other tools made, so a plugin such as obsidian-guanjia accepts it without rewriting it.
+If your vault keeps its rules for AI agents in an `AGENTS.md` at its root (frontmatter fields, folders, hubs), Weft hands that file to Claude as the `weft://conventions` resource and tells it to follow the file when capturing. Claude picks the values that need judgment; Weft scrubs and files the note. The result looks like a note your other tools made, so a plugin such as Nexus accepts it without rewriting it.
 
 ```mermaid
 flowchart LR
@@ -52,7 +52,7 @@ flowchart LR
     claude -->|"reads weft://conventions<br/>(your AGENTS.md)"| weft
     claude -->|"weft_capture(text, note_type, domain,<br/>hub, summary, tags)"| weft["Weft MCP server<br/>(scrub + file, no network)"]
     weft -->|"new note in your inbox folder"| vault[("Obsidian vault")]
-    guanjia["obsidian-guanjia<br/>(templates, Bases, hubs)"] -->|"hygiene finds nothing to fix"| vault
+    nexus["Nexus<br/>(templates, Bases, hubs)"] -->|"hygiene finds nothing to fix"| vault
 ```
 
 A capture then comes out like this (the email was scrubbed before anything touched the disk):
