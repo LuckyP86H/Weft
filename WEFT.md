@@ -29,7 +29,7 @@ Claude (agent) ──understands intent──▶ calls weft_capture(text, source
 Weft MCP server ◀── stdio ────────────────┘
   │  1. hygiene scrub (deterministic)
   │  2. write markdown + frontmatter to vault/inbox/
-  │  3. return { note_path, redaction_report }
+  │  3. return { note_path, redactions }
   ▼
 Obsidian vault ── [[wikilinks]] ──▶ knowledge graph (rendered by Obsidian)
 ```
@@ -91,7 +91,7 @@ in a later layer, or in the agent's judgment).
   note_type?: string, summary?: string, domain?: string, hub?: string,
   tags?: string[], dry_run?: bool }`
 - `source_type`: `article | news | video | thought | book | seminar | work | conversation | other`
-- **Out:** `{ note_path, redaction_report }`
+- **Out:** `{ note_path, redactions }`
 - **Behavior:**
   1. Run `weft_scrub` on `text`.
   2. Generate filename: `YYYY-MM-DD-HHmm-<slug>.md` (slug = up to 10 CJK
