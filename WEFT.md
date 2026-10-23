@@ -31,7 +31,7 @@ sequenceDiagram
     Claude->>Weft: tools/call weft_capture(text, source_type) over stdio
     Weft->>Weft: 1. hygiene scrub (deterministic)
     Weft->>Vault: 2. write markdown + frontmatter to the inbox folder
-    Weft-->>Claude: 3. { note_path, redaction_report }
+    Weft-->>Claude: 3. { note_path, redactions }
     Note over Vault: [[wikilinks]] become the knowledge graph<br/>(rendered by Obsidian)
 ```
 
