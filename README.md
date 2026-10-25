@@ -16,6 +16,13 @@ Not yet:
 - Your own `redact_terms` list (milestone 6), so company names and codenames are not redacted today.
 - Excluding folders from search and link suggestions. A note in `Security/` is still searchable; its snippets are scrubbed, but the note is not skipped.
 
+What Weft won't do:
+
+- Edit, move, rename or delete a note that already exists. `weft_capture` only creates new files, and never overwrites one.
+- Call a model or any other network service. It holds no API keys.
+- Read `.obsidian/`, `.trash/`, `.git/` or other hidden folders.
+- Make judgment calls, such as which tags or links a note gets. That's the agent's job.
+
 ## Setup
 
 Requires Python 3.14 and [uv](https://docs.astral.sh/uv/) 0.13+ (`brew upgrade uv`). `uv sync` fetches everything else.
@@ -75,7 +82,7 @@ Add Weft to `claude_desktop_config.json` (on macOS, `~/Library/Application Suppo
 
 ### Use it with a vault that has an AGENTS.md
 
-If your vault keeps its rules for AI agents in an `AGENTS.md` at its root (frontmatter fields, folders, hubs), Weft hands that file to Claude as the `weft://conventions` resource and tells it to follow the file when capturing. Claude picks the values that need judgment; Weft scrubs and files the note. The result looks like a note your other tools made, so a plugin such as Nexus accepts it without rewriting it.
+If your vault keeps its rules for AI agents in an `AGENTS.md` at its root (frontmatter fields, folders, hubs), Weft hands that file to Claude as the `weft://conventions` resource and tells it to follow the file when capturing. Claude picks the values that need judgment; Weft scrubs and files the note. The result looks like a note your other tools made. When Claude fills `domain`, `hub` and `summary`, the note already has the fields that Nexus's hygiene check looks for, so Nexus has nothing to fix.
 
 ```mermaid
 flowchart LR
@@ -83,7 +90,7 @@ flowchart LR
     claude -->|"reads weft://conventions<br/>(your AGENTS.md)"| weft
     claude -->|"weft_capture(text, note_type, domain,<br/>hub, summary, tags)"| weft["Weft MCP server<br/>(scrub + file, no network)"]
     weft -->|"new note in your inbox folder"| vault[("Obsidian vault")]
-    nexus["Nexus<br/>(templates, Bases, hubs)"] -->|"hygiene finds nothing to fix"| vault
+    nexus["Nexus<br/>(templates, Bases, hubs)"] -->|"nothing to fix when domain,<br/>hub and summary are set"| vault
 ```
 
 Here is that capture call made by hand in the Inspector, with the fields Claude would fill from your AGENTS.md:
@@ -111,10 +118,34 @@ redactions:
 
 `hub` must be an existing note, and a call with an unknown hub fails before anything is written. Vaults without an `AGENTS.md` get none of this and work as before.
 
+### How Weft fits with Nexus
+
+Nexus is an Obsidian plugin for capture, templates, hubs and Bases. Each part has one job:
+
+| Part | Owns |
+|---|---|
+| **Claude** | Judgment: which note type, domain, hub, summary and tags; which suggested links are real |
+| **Weft** | The agent's door into the vault: scrubbing, new notes in the inbox, search, link ranking |
+| **Nexus** | Everything that changes an existing note, inside Obsidian: promoting inbox notes, templates, moving, backlinks |
+
+There is one inbox. Nexus's quick thoughts and Weft's captures both land in it, and both leave it through Nexus or by hand. More detail is in [WEFT.md §12](WEFT.md#with-an-agentsmd-vault-and-nexus).
+
+## Roadmap
+
+- **Now (v0.1.0):** milestones 0-4 and `weft://conventions`, as listed above.
+- **Phase 4:** a single read boundary, so every read is scrubbed and can skip folders; excluded folders; your own `redact_terms`; `weft_read_note`; then a week of real use (milestones 5 and 6).
+- **Phase 5, shaped by that week:** a machine-readable contract in the vault's `AGENTS.md`, captures that arrive with links, and possibly append-only edits with previews.
+- **Later:** a benchmark before any cache, an evaluation of agent behavior, and a review prompt.
+
+[WEFT.md §9](WEFT.md#9-build-order-milestones) maps phases to milestones.
+
 ## Develop
 
 ```sh
 uv run pytest
+uv run pylint $(git ls-files '*.py')
 ```
+
+CI runs both. [AGENTS.md](AGENTS.md) has the rules for coding agents working on this repo.
 
 Layers, one-way dependencies (`cli → server → tools → (vault, domain)`): `config`/`discovery` answer *where*, `vault` is the safe filesystem boundary, `scrub`/`capture`/`search`/`links` are the domain code (plain Python), `tools/` are thin MCP adapters (the tools plus the conventions resource), `server.py` is the composition root. Only `server.py` and `tools/` import `mcp`.
