@@ -34,7 +34,6 @@ sequenceDiagram
     Weft-->>Claude: 3. { note_path, redactions }
     Note over Vault: [[wikilinks]] become the knowledge graph<br/>(rendered by Obsidian)
 ```
-```
 
 ## 2. Design principles
 
@@ -347,7 +346,7 @@ insert the links. Open Graph view and see threads appear.
 small, everyday words such as `make` and `step` still count; the rarity
 weighting matters more as the vault grows.*
 
-### With an AGENTS.md vault and obsidian-guanjia
+### With an AGENTS.md vault and Nexus
 
 Each part does what it is good at, and none of them repeats another's job:
 
@@ -355,11 +354,11 @@ Each part does what it is good at, and none of them repeats another's job:
 |---|---|---|
 | **Claude** (the agent) | Judgment: which `note_type`, `domain`, `hub`, `summary`, `tags`; which suggested links are real | Touch the disk directly |
 | **Weft** (this server) | Scrubbing, filing into the inbox folder, search, link ranking, handing over `AGENTS.md` | Call a model, or decide anything fuzzy |
-| **obsidian-guanjia** (in Obsidian) | Templates, Bases tables, hubs, hygiene, moving notes into their domain | Need to rewrite Weft's notes: they already carry the fields its hygiene check looks for |
+| **Nexus** (in Obsidian) | Templates, Bases tables, hubs, hygiene, moving notes into their domain | Need to rewrite Weft's notes: they already carry the fields its hygiene check looks for |
 
 Setup, once: `weft config set-inbox "Inbox & Thoughts"`. Then in Claude Code,
 say *"capture this thought: …"*. Claude reads `weft://conventions`, fills the
-vault fields and calls `weft_capture`. In Obsidian, guanjia's hygiene check
+vault fields and calls `weft_capture`. In Obsidian, Nexus's hygiene check
 finds nothing to fix, and the note digest its classification audit sends
 already has the note's `type`, `domain` and `summary`.
 
