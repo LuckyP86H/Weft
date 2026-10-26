@@ -18,7 +18,7 @@ Not yet:
 
 ## Setup
 
-Requires Python 3.14 and [uv](https://docs.astral.sh/uv/) 0.13+ (`brew upgrade uv`). `uv sync` fetches everything else.
+Requires Python 3.15 and [uv](https://docs.astral.sh/uv/) 0.13+ (`brew upgrade uv`). `uv sync` fetches everything else.
 
 ```sh
 uv sync
