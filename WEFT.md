@@ -264,7 +264,7 @@ Planning talks in phases. This is how they map to the milestones:
 |---|---|---|
 | 1 | 0, the foundation | done |
 | 2 | 1-2, `weft_scrub` and `weft_capture` | done |
-| 3 | 3-4, `weft_search` and `weft_suggest_links`, plus `weft://conventions` | done (v0.1.0) |
+| 3 | 3-4, `weft_search` and `weft_suggest_links`, plus `weft://conventions` | code done (v0.1.0) |
 | 4 | a single read boundary, excluded folders, `redact_terms` (6), `weft_read_note`, then the dogfood week (5) | next |
 | 5 | shaped by the dogfood week: a contract block in the vault's AGENTS.md, linked captures, possibly guarded edits | later |
 

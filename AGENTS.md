@@ -6,7 +6,7 @@ Read [WEFT.md](WEFT.md) for the spec. §1 (agent vs. server), §2 (principles) a
 
 ## Commands
 
-Python 3.14 (from `.python-version`) and uv 0.13+.
+Python 3.15 (from `.python-version`) and uv 0.13.4+.
 
 ```sh
 uv sync                                  # install, using uv.lock
@@ -15,7 +15,7 @@ uv run pylint $(git ls-files '*.py')     # lint, same as CI
 uv run weft serve --vault /path/to/vault # run the server over stdio
 ```
 
-CI (`.github/workflows/pylint.yml`, check name `build (3.14)`) runs `uv sync --locked`, then pytest, then pylint. Both must pass. If you add a dependency, update `uv.lock` with uv and commit it.
+CI (`.github/workflows/pylint.yml`, check name `build`) runs `uv sync --locked`, then pytest, then pylint. Both must pass. If you add a dependency, update `uv.lock` with uv and commit it.
 
 ## Rules
 
