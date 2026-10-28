@@ -7,7 +7,7 @@ authors = [
     { name = "Paul", email = "46582797+LuckyP86H@users.noreply.github.com" }
 ]
 license = { file = "LICENSE" }
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = [
     "mcp>=2.3.0",
     "pydantic>=2.14.0",

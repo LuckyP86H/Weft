@@ -18,7 +18,7 @@ Not yet:
 
 ## Setup
 
-Requires Python 3.14 and [uv](https://docs.astral.sh/uv/) 0.13.4+ (`brew upgrade uv`). `uv sync` fetches everything else. (0.13.4 is the floor because of the October 2026 eMudhra/emSign CA incident: earlier uv releases bundle CA certificates that still trust the compromised emSign intermediate CAs.)
+Requires Python 3.15 and [uv](https://docs.astral.sh/uv/) 0.13+ (`brew upgrade uv`). `uv sync` fetches everything else.
 
 ```sh
 uv sync
