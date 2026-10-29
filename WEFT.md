@@ -141,11 +141,13 @@ in a later layer, or in the agent's judgment).
 ```
 <vault>/
   inbox/              # fresh captures land here (weft_capture writes here)
-  notes/              # curated notes — you promote from inbox by hand
+  ...                 # the rest of the vault: Weft reads it, never changes it
 ```
 
 `inbox/` is only the default. A vault that already has an inbox points Weft at
-it with `weft config set-inbox "<folder>"` (below).
+it with `weft config set-inbox "<folder>"` (below). Moving a capture out of the
+inbox, into a folder and a template, is not Weft's job: you do it by hand, or
+a plugin such as Nexus does it inside Obsidian (§12).
 
 **The vault location is never hard-coded and never stored inside the vault**
 (a config file in the vault can't tell you where the vault is). It is resolved
@@ -240,7 +242,8 @@ Run locally: `uv run weft serve` (stdio JSON-RPC), or without uv:
   MCP Prompts in v0.2)
 - MCP Resources for the notes themselves (v0.1 exposes only the vault's
   AGENTS.md, as `weft://conventions`)
-- Obsidian plugin, mobile capture shortcut, cloud sync
+- Mobile capture shortcut, cloud sync
+- An Obsidian plugin, for good: Nexus is the in-Obsidian companion (§12)
 - Anything with a network call
 
 ## 9. Build order (milestones)
@@ -251,8 +254,19 @@ Run locally: `uv run weft serve` (stdio JSON-RPC), or without uv:
 2. `weft_capture` (frontmatter + file writing + collision handling) (done)
 3. `weft_search` (done)
 4. `weft_suggest_links` (done)
-5. `claude mcp add` → dogfood for one week on real daily inputs
+5. `claude mcp add` → dogfood for one week on real daily inputs (next, after
+   the phase 4 read boundary below)
 6. Per-vault settings (`redact_terms`; `inbox_dir` is done) + README polish
+
+Planning talks in phases. This is how they map to the milestones:
+
+| Phase | Milestones | Status |
+|---|---|---|
+| 1 | 0, the foundation | done |
+| 2 | 1-2, `weft_scrub` and `weft_capture` | done |
+| 3 | 3-4, `weft_search` and `weft_suggest_links`, plus `weft://conventions` | code done (v0.1.0) |
+| 4 | a single read boundary, excluded folders, `redact_terms` (6), `weft_read_note`, then the dogfood week (5) | next |
+| 5 | shaped by the dogfood week: a contract block in the vault's AGENTS.md, linked captures, possibly guarded edits | later |
 
 **Definition of done for v0.1:** you capture 10 real thoughts across a week,
 every one scrubbed and filed without you touching a file by hand, and
@@ -260,10 +274,10 @@ every one scrubbed and filed without you touching a file by hand, and
 
 ## 10. How to build with Claude Code
 
-Paste this file as context and open with:
-"Build Weft v0.1 per WEFT.md, starting at milestone 1. Follow the stack in §7.
-Write table-driven tests for the scrubber before the capture tool.
-Follow the tutor protocol in §11 — teach as you build."
+v0.1 is built. To keep working on Weft with Claude Code (or any coding agent),
+point it at [AGENTS.md](AGENTS.md), which has the commands and the rules, and at
+the phase you're on in §9. The tutor protocol in §11 still applies to new
+milestones.
 
 ## 11. Builder-as-tutor protocol
 
@@ -328,7 +342,8 @@ In Claude Code or Claude Desktop, just talk:
 - *"capture this article: <paste> — source_type article"*
 - *"quick thought: Bible study tonight was about stewardship"*
 - *"I read a PR that used CRDTs for collaborative editing, work-related"*
-  → the agent picks `source_type: work`, the server scrubs company terms,
+  → the agent picks `source_type: work`, the server scrubs company terms
+  (once `redact_terms` lands in milestone 6),
   the note lands in your inbox folder with `scrubbed: true`.
 
 **`weft_search` — "what did I think about X?"**
@@ -365,7 +380,7 @@ already has the note's `type`, `domain` and `summary`.
 ### A day in the life (the end goal, in miniature)
 
 - **Morning:** article → `weft_capture` → filed in 5 seconds, no filing system to maintain.
-- **Work:** PR insight → captured with `source_type: work` → company terms auto-redacted → safe in your personal vault.
+- **Work:** PR insight → captured with `source_type: work` → company terms auto-redacted (once `redact_terms` lands) → safe in your personal vault.
 - **Evening:** fleeting thought → captured → `weft_suggest_links` connects it to last week's book note → new idea you wouldn't have had.
 - **Weekend:** `weft_search` across the week → review in Obsidian graph → inspiration compounds.
 
